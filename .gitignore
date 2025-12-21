@@ -1,0 +1,496 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+
+# =============================================================================
+# Symbolic MCP - Comprehensive .gitignore
+# Security-focused symbolic execution MCP server
+# =============================================================================
+
+# =============================================================================
+# SECURITY & CREDENTIALS - IMMEDIATE SECURITY RISK IF COMMITTED
+# =============================================================================
+# Credentials and secrets
+.env
+.env.*
+.envrc
+.env.local
+.env.development
+.env.test
+.env.production
+.secrets
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+known_hosts
+
+# Security scanning and vulnerability reports
+security_reports/
+vulnerability_scans/
+bandit_report.json
+safety_report.json
+semgrep_report.json
+codeql_report.sarif
+*.security.log
+security_audit.*
+cve_*.log
+penetration_test_results/
+
+# CrossHair symbolic execution artifacts
+.crosshair/
+crosshair_messages/
+crosshair_cache/
+symbolic_execution_cache/
+path_exploration_results/
+verification_reports/
+
+# =============================================================================
+# PYTHON - CORE PYTHON ARTIFACTS
+# =============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+test_reports/
+.coverage.*
+coverage_*.json
+coverage_*.xml
+
+# =============================================================================
+# VIRTUAL ENVIRONMENTS & DEPENDENCIES
+# =============================================================================
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.virtualenv/
+pipenv/
+pipenv.lock
+poetry.lock
+conda-meta/
+.conda/
+
+# uv package manager (modern Python packaging)
+.uv_cache/
+uv.lock
+
+# =============================================================================
+# IDE & EDITOR CONFIGURATIONS
+# =============================================================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.vscode/settings.json.temp
+.vscode/launch.json.temp
+
+# PyCharm / IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+target/
+
+# Emacs / Vim
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+*.swp
+*.swo
+*.swn
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z][a-z]
+Session.vim
+Sessionx.vim
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# =============================================================================
+# OPERATING SYSTEM FILES
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# DEBUGGING & DEVELOPMENT ARTIFACTS
+# =============================================================================
+# Debug files
+debug_*.py
+debug_*.log
+debugger_*.py
+test_debug_*.py
+debug_output/
+debug_logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+.~*
+*~
+
+# Analysis reports (exclude from main repo, keep local)
+analysis_report.py
+code_review_analysis.md
+final_code_review_assessment.py
+CODE_REVIEW_*.md
+SECURITY_FIX_*.md
+FINAL_*.md
+*_SUMMARY.md
+*_REPORT.md
+*_VERIFICATION.py
+
+# Test artifacts and temporary files
+simple_*.py
+test_*.py.temp
+debug_*.py.temp
+*_standalone.py
+*_simple.py
+*_verification.py
+test_temp/
+temp_test_*
+
+# =============================================================================
+# DOCUMENTATION BUILD ARTIFACTS
+# =============================================================================
+# Sphinx / MkDocs documentation
+docs/_build/
+docs/build/
+site/
+.jupyter_cache/
+.pytest_cache/
+
+# Documentation generated files
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.figlist
+*.makefile
+*.upa
+*.upb
+*.fplugs
+*.upa
+
+# =============================================================================
+# PERFORMANCE & MONITORING
+# =============================================================================
+# Performance monitoring and profiling
+*.prof
+*.profile
+*.profraw
+.profdata
+performance_reports/
+benchmark_results/
+.memory_profiler
+.speedscope.json
+
+# Resource monitoring
+cpu_usage.log
+memory_usage.log
+performance_*.log
+load_test_results/
+stress_test_results/
+
+# =============================================================================
+# CONTAINERIZATION & DEPLOYMENT
+# =============================================================================
+# Docker
+.dockerignore-temp
+docker-compose.override.yml
+.dockerignore.local
+docker-compose.override.local.yml
+
+# Kubernetes / Helm
+*.kubeconfig
+kubeconfig*
+secrets.yaml
+values-local.yaml
+override-values.yaml
+
+# =============================================================================
+# BUILD & CI/CD ARTIFACTS
+# =============================================================================
+# Build artifacts
+*.o
+*.a
+*.lib
+*.obj
+*.def
+*.exp
+*.pdb
+*.ilk
+*.meta
+
+# CI/CD pipeline artifacts
+.github/workflows/temp/
+.github/actions/temp/
+.gitlab-ci-local
+bitbucket-pipelines.local
+
+# =============================================================================
+# RESEARCH & EXPERIMENTAL FEATURES
+# =============================================================================
+# Research and experimental code
+experimental/
+research/
+sandbox/
+proto/
+drafts/
+
+# Machine learning and AI artifacts
+models/
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.joblib
+*.mlmodel
+mlruns/
+wandb/
+.dvc
+
+# =============================================================================
+# LOGGING & MONITORING
+# =============================================================================
+# Application logs
+*.log
+logs/
+log/
+*.out
+app.log
+debug.log
+error.log
+access.log
+audit.log
+security.log
+symbolic_execution.log
+
+# Monitoring and metrics
+metrics/
+monitoring/
+prometheus_data/
+grafana_data/
+
+# =============================================================================
+# DATABASE & DATA FILES
+# =============================================================================
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.sqlitedb
+
+# Data files (potentially sensitive)
+*.csv
+*.jsonl
+*.parquet
+*.hdf5
+data/
+datasets/
+test_data/
+training_data/
+
+# =============================================================================
+# FASTMCP & MCP SPECIFIC
+# =============================================================================
+# FastMCP server artifacts
+.fastmcp/
+fastmcp_cache/
+mcp_server_logs/
+mcp_tool_registry/
+mcp_tool_cache/
+
+# MCP protocol artifacts
+mcp_sessions/
+mcp_tool_executions/
+mcp_error_logs/
+mcp_debug_info/
+
+# =============================================================================
+# SYMBOLIC EXECUTION SPECIFIC
+# =============================================================================
+# Symbolic execution artifacts (CrossHair, Z3, etc.)
+symbolic_results/
+path_exploration/
+constraint_solving/
+verification_cache/
+.smt2_cache/
+z3_solver_cache/
+angr_project/
+angr_workspace/
+
+# Verification artifacts
+verification_results/
+formal_verification_reports/
+model_checking_results/
+counterexamples/
+invariants/
+
+# =============================================================================
+# DEVELOPMENT UTILITIES
+# =============================================================================
+# Pre-commit hooks
+.pre-commit-hooks.yaml.temp
+.pre-commit-config.yaml.local
+.husky/
+git_hooks_temp/
+
+# Development scripts
+scripts/temp/
+scripts/local/
+dev_*.sh
+dev_*.py
+setup_local.*
+
+# =============================================================================
+# TEMPORARY & EXPERIMENTAL
+# =============================================================================
+# Temporary directories
+tmp/
+temp/
+.tmp/
+.tmpdir/
+temp_files/
+scratch/
+
+# Working directories
+work/
+working/
+workspace/
+.wip/
+
+# =============================================================================
+# PROJECT-SPECIFIC EXCLUSIONS
+# =============================================================================
+# Local development configuration
+local_config.py
+local_settings.py
+dev_config.py
+debug_config.py
+
+# Backup files created during development
+*_backup.py
+*_original.py
+*_replacement.py
+main_original_backup.py
+main_replacement.py
+
+# CVE and security vulnerability research
+CVE_RESEARCH/
+vulnerability_research/
+security_analysis/
+threat_modeling/
+
+# Cross-platform development artifacts
+.mypy_cache/
+.bandit_cache/
+.flake8_cache/
+.pylint.d/
+.pytest_cache/

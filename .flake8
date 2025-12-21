@@ -1,0 +1,215 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+#
+# =============================================================================
+# Symbolic MCP - Flake8 Configuration
+# Security-focused symbolic execution MCP server
+# =============================================================================
+
+[flake8]
+
+# Maximum line length (aligned with Black formatting)
+max-line-length = 88
+
+# Error codes to ignore
+extend-ignore =
+    # Whitespace
+    E203,  # whitespace before ':' (conflicts with Black)
+    W503,  # line break before binary operator (conflicts with Black)
+    W504,  # line break after binary operator (conflicts with Black)
+
+    # Import related
+    F401,  # imported but unused (handled by isort)
+    F403,  # star import (sometimes needed for symbolic execution)
+    F405,  # star import usage (sometimes needed for symbolic execution)
+
+    # Variable naming
+    E741,  # ambiguous variable name (l, O, I)
+
+    # Documentation
+    E501,  # line too long (handled by Black)
+
+    # Error handling
+    E722,  # bare except (sometimes needed in symbolic execution)
+
+    # Complexity (handled by other tools)
+    C901,  # too complex
+    E701,  # multiple statements on one line
+
+# Directories to exclude
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .eggs,
+    *.egg-info,
+    .venv,
+    venv,
+    .tox,
+    .pytest_cache,
+    .mypy_cache,
+    .bandit_cache,
+    .coverage,
+    htmlcov,
+    .benchmarks,
+    docs/_build,
+    site
+
+# Per-file ignores
+per-file-ignores =
+    # Test files
+    test_*.py:F401,F811,E722,F841
+
+    # Test files can have unused imports and redefined functions
+    tests/*:F401,F811,E722,F841
+
+    # Main module (symbolic execution has specific patterns)
+    main.py:E722,F401,F841
+
+    # Configuration files
+    setup.py:F401,F841
+    conftest.py:F401,F811
+
+    # Security tests (may have complex patterns)
+    test_security_*.py:E722,F841
+    security_*.py:E722,F841
+
+    # Debug files (temporary files)
+    debug_*.py:F401,F841,E722
+    *_debug.py:F401,F841,E722
+
+    # Integration tests
+    integration/*:F401,F811,E722,F841
+
+    # Documentation and examples
+    examples/*:F401,F841,E722
+    docs/*:F401,F841,E722
+
+# Maximum complexity
+max-complexity = 10
+
+# Additional flake8 plugins configuration
+enable-extensions =
+    G     # flake8-logging-format
+    B     # flake8-bugbear
+    C     # mccabe complexity
+    E,W   # pycodestyle errors and warnings
+
+# Import order style (future, stdlib, third-party, first-party, local)
+import-order-style = google
+
+# Application package names for import-order-style = google
+application-import-names = main
+
+# Third-party imports known to flake8-import-order
+known-third-party =
+    fastmcp,
+    crosshair,
+    z3,
+    icontract,
+    RestrictedPython,
+    psutil,
+    pydantic,
+    typing_extensions,
+    pytest,
+    hypothesis,
+    numpy,
+    scipy,
+    networkx,
+    sympy,
+    angr,
+    claripy,
+    cle,
+    archinfo
+
+# Special case for known first-party imports
+known-first-party = main
+
+# Line ending checking
+extend-exclude =
+    # Exclude generated files
+    *.pb2.py,
+    _pb2.py,
+    *_pb2.py,
+
+    # Exclude vendored code
+    vendor/,
+    third_party/,
+
+    # Exclude build artifacts
+    build/,
+    dist/,
+    *.egg-info/,
+
+# Inline comment configuration
+inline-quotes = single
+
+# Multiline string configuration
+multiline-quotes = double
+
+# Docstring quotes
+docstring-quotes = double
+
+# Cyclomatic complexity threshold
+max-cognitive-complexity = 15
+
+# Maximum number of characters in docstring lines
+max-doc-length = 88
+
+# Handle noqa comments
+extend-ignore-with-noqa = true
+
+# Specific error codes to check
+select =
+    # pycodestyle errors
+    E,
+    W,
+
+    # PyFlakes
+    F,
+
+    # McCabe complexity
+    C,
+
+    # pep8-naming
+    N,
+
+    # flake8-annotations
+    ANN,
+
+    # flake8-bugbear
+    B,
+
+    # flake8-comprehensions
+    C4,
+
+    # flake8-simplify
+    SIM,
+
+# Security-focused configuration for symbolic execution
+# Add specific checks for security-related patterns
+[flake8.security]
+# Additional security checks specific to symbolic execution
+# These extend beyond standard flake8 rules
+
+# Check for dangerous function calls
+dangerous-functions = eval,exec,compile,input,open
+
+# Check for security-sensitive imports
+security-sensitive-imports = subprocess,os,socket,ssl,hashlib,hmac,secrets,crypt
+
+# Check for resource usage patterns
+check-resource-usage = true
+
+# Check for path manipulation
+check-path-manipulation = true
+
+# Check for command execution patterns
+check-command-execution = true
+
+# Check for file operations
+check-file-operations = true
+
+# Check for network operations
+check-network-operations = true

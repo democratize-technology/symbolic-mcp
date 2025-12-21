@@ -1,0 +1,590 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+#
+# =============================================================================
+# Symbolic MCP - Pylint Configuration
+# Security-focused symbolic execution MCP server
+# =============================================================================
+
+[MASTER]
+
+# Python code to execute, usually for sys.path manipulation or import hooks.
+# For example: sys.path.insert(0, '.')
+init-hook='import sys; sys.path.append(".")'
+
+# Use multiple processes to speed up Pylint.
+jobs=1
+
+# List of plugins (as comma separated values of python module names) to load.
+load-plugins=p
+
+# Load plugins for security analysis
+load-plugins=
+    pylint.extensions.check_elif,
+    pylint.extensions.check_docs,
+    pylint.extensions.mccabe,
+    pylint.extensions.redefined_variable_type,
+    pylint.extensions.docstyle,
+    pylint.extensions.overlapping_exceptions
+
+# Pickle collected data for later comparisons.
+persistent=yes
+
+# Use a pickled pickle file for persisting data.
+# The file can be set at runtime through the PYLINTPICKLEFILE environment variable.
+#pickle-file=
+
+# When enabled, pylint would attempt to guess common misconfiguration and emit
+# warnings. This setting should be disabled when pylint is used as a library.
+# guess-options=no
+
+# Add files or directories to the blacklist. They should be base names, not paths.
+ignore=CVS
+
+# Add files or directories matching the regex patterns to the blacklist.
+ignore-patterns=
+    ^\.#?   # Ignore hidden files
+    .*\.pyc # Ignore compiled files
+    .*\.pyo # Ignore optimized files
+
+# List of module names for which member variables should be treated as protected.
+# Protected members are accessed with an underscore prefix
+protected-members=
+    _.*,    # All underscore prefixed
+    __.*__  # All dunder methods
+
+# Python code to execute, usually for sys.path manipulation or import hooks.
+# For example: sys.path.insert(0, '.')
+init-hook='import sys; sys.path.append(".")'
+
+# Control the amount of potential inferred values when inferring a single object.
+# This can help the performance when dealing with large functions or complex, nested data structures.
+limit-inference-results=100
+
+# Use multiple processes to speed up Pylint.
+jobs=1
+
+# Control the amount of tokens displayed per function for messages like "too many
+# arguments". If this option is a positive integer, pylint will display at most this
+# many tokens per function.
+max-args=7
+
+# Control the amount of branches displayed for messages like "too many branches".
+# If this option is a positive integer, pylint will display at most this many
+# branches per function.
+max-branches=12
+
+# Control the amount of statements displayed per function for messages like "too
+# many statements". If this option is a positive integer, pylint will display at
+# most this many statements per function.
+max-statements=50
+
+# Control the amount of returned statements per function for messages like "too
+# many return statements". If this option is a positive integer, pylint will display
+# at most this many returned statements per function.
+max-returns=6
+
+# Control the amount of local variables per function for messages like "too many
+# local variables". If this option is a positive integer, pylint will display at
+# most this many local variables per function.
+max-locals=15
+
+# Show the names of overloaded methods in the output. If this option is a positive
+# integer, pylint will display at most this many names per function.
+show-overloaded-arguments=5
+
+# Enable the evaluation of an AST node as a real object. If this option is set to
+# false, the evaluation will be done only if the node is a string. If this option
+# set to true, the evaluation will be done for all the nodes. If this option is
+# set to false, the evaluation will be done only if the node is a string.
+eval-ast-node=true
+
+# Set the output format. Available formats are text, parseable, colorized, json
+# and msvs (visual studio). You can also give a reporter class, e.g.
+# mypackage.mymodule.MyReportClass.
+output-format=text
+
+# Put messages in a separate file for each module / package specified on the
+# command line instead of printing them on stdout. Reports have the same base name
+# as the module, separated by a hyphen. If outputfile is set, the name of this file
+# will be the base name. The default is to output to stdout.
+files-output=no
+
+# Tells pylint whether to display a full report or only the messages.
+reports=yes
+
+# Python expression which should return a score less than or equal to 10. You have access
+# to the variables 'fatal', 'error', 'warning', 'refactor', 'convention', 'info' which
+# contain the number of messages in each category, as well as 'statement' which is the
+# total number of statements analyzed. This score is used by the global evaluation report
+# (RP0004).
+score=10.0
+
+# Activate the evaluation score.
+score=yes
+
+# Disable score evaluation by default
+score=no
+
+# Activate the evaluation score with some custom evaluation formula
+# For example: score = 5.0 * ((fatal + error + warning + refactor + convention) / statement)
+score=yes
+
+# Set the evaluation score. This score is used by the global evaluation report (RP0004).
+score=10.0
+
+[FORMAT]
+
+# Maximum number of characters on a single line.
+max-line-length=88
+
+# Regexp for a line that is allowed to be longer than the limit.
+ignore-long-lines=^\s*(# )?<?https?://\S+>?$
+
+# Allow the body of an if to be on the same line as the test if there is no else.
+single-line-if-stmt=no
+
+# List of optional constructs for which whitespace checking is disabled.
+no-space-check=
+
+# Maximum number of lines in a module.
+max-module-lines=1000
+
+# String used as indentation unit. This is usually "    " (4 spaces) or "\t" (1 tab).
+indent-string='    '
+
+# Number of spaces of indent required inside a hanging or continued line.
+indent-after-paren=4
+
+# String used as indentation unit. This is usually "    " (4 spaces) or "\t" (1 tab).
+indent-string='    '
+
+# String used as indentation unit. This is usually "    " (4 spaces) or "\t" (1 tab).
+indent-string='    '
+
+[MISCELLANEOUS]
+
+# List of note tags to take in consideration, separated by a comma.
+notes=FIXME,XXX,TODO,HACK,NOTE,BUG,SECURITY
+
+[TYPECHECK]
+
+# Tells whether missing members accessed in mixin class should be ignored. A mixin
+# class is detected if its name ends with "mixin" (case insensitive).
+ignore-mixin-members=yes
+
+# List of module names for which member variables should be treated as protected.
+protected-members=_.*,__.*
+
+# List of class names for which member variables should be treated as attributes.
+generated-classes=SQLObject,Protocol,NamedTuple
+
+# List of members which are set dynamically and missed by pylint inference system,
+# and so shouldn't trigger E1101 when accessed. Python regular expressions are
+# accepted.
+generated-members=
+
+# List of names for which member variables should not be checked (useful for
+# modules/projects where namespace management was done in a C way).
+defining-attr-groups=
+
+# Tells whether to warn about missing members when the owner of the attribute is
+# inferred to be None.
+none-is-undefined=no
+
+# List of decorators that change the inference of a function. For example,
+# @typing.overload and @typing.no_type_check change the inference of the arguments.
+inference-mutators=
+
+[VARIABLES]
+
+# Tells whether we should check for unused import in __init__.py files.
+init-import=no
+
+# A regular expression matching the name of dummy variables (i.e. expected not to be used).
+dummy-variables-rgx=^_|dummy|unused_.*$
+
+# List of variable names that should not be used in __init__.py files.
+init-hook=no
+
+# List of variable names that should not be used for type hints.
+typecheck-rgx=.*
+
+# List of variable names that should not be used for tests.
+test-rgx=.*
+
+# List of variable names that should not be used for tests.
+test-rgx=.*
+
+# List of additional variable names that are currently defined in the project.
+additional-builtins=
+
+# List of strings which can identify a callback function by name. A callback name
+# must start or end with one of those strings.
+callbacks=cb_,_cb
+
+# A regular expression matching the name of function parameters that are
+# allowed to be unused. Unused arguments are the ones with default values,
+# and are only used in the function body.
+unused-argument-rgx=^_|args|kwargs$
+
+# A regular expression matching the name of variable names that are allowed to be
+# unused. Unused arguments are the ones with default values, and are only used in
+# the function body.
+unused-variable-rgx=^_|dummy|unused_.*$
+
+[BASIC]
+
+# List of builtins function names that should not be used, separated by a comma.
+bad-functions=input,exec,eval,execfile,compile
+
+# Good variable names which should always be accepted, separated by a comma.
+good-names=i,j,k,ex,Run,_
+
+# Bad variable names which should always be rejected, separated by a comma.
+bad-names=foo,bar,baz,toto,tutu,tata
+
+# Colon-delimited sets of names that determine each other's naming style when the
+# name regexes allow several styles.
+name-group=
+
+# Include a hint for the correct naming format with invalid-name.
+include-naming-hint=no
+
+# Regular expression matching correct function names
+function-rgx=^(?:(?P<exempt>_[a-z0-9_]+__|test[a-z0-9_]+)|[a-z_][a-z0-9_]{2,30})$
+
+# Regular expression matching correct variable names
+variable-rgx=^[a-z_][a-z0-9_]{2,30}$
+
+# Regular expression matching correct constant names
+const-rgx=^(_?[A-Z0-9_]+|__.*__)$
+
+# Regular expression matching correct attribute names
+attr-rgx=^[a-z_][a-z0-9_]{2,30}$
+
+# Regular expression matching correct argument names
+argument-rgx=^[a-z_][a-z0-9_]{2,30}$
+
+# Regular expression matching correct class attribute names
+class-attribute-rgx=^(_?[A-Z0-9_]+|__.*__)$
+
+# Regular expression matching correct inline iteration names
+inlinevar-rgx=^[a-z_][a-z0-9_]*$
+
+# Regular expression matching correct class names
+class-rgx=^[A-Z_][a-zA-Z0-9]+$
+
+# Regular expression matching correct module names
+module-rgx=^(_?[a-z_][a-z0-9_]*|__init__)$
+
+# Regular expression matching correct method names
+method-rgx=^(?:(?P<exempt>_[a-z0-9_]+__|test[a-z0-9_]+)|[a-z_][a-z0-9_]{2,30})$
+
+# Regular expression which should only match function or class names that do
+# not require a docstring.
+no-docstring-rgx=^_
+
+# Minimum line length for functions/classes that require docstrings, shorter
+# ones are exempt.
+docstring-min-length=-1
+
+[CLASSES]
+
+# List of method names used to declare (i.e. assign) instance attributes.
+defining-attr-methods=__init__,__new__,setUp
+
+# List of valid names for the first argument in a class method.
+valid-classmethod-first-arg=cls
+
+# List of valid names for the first argument in a metaclass class method.
+valid-metaclass-classmethod-first-arg=mcs
+
+# List of member names, which should be excluded from the protected access
+# warning.
+exclude-protected=_asdict,_fields,_replace,_source,_make
+
+# List of valid names for the first argument in a static method.
+valid-staticmethod-first-arg=
+
+# List of member names, which should be included in the invalid access warning.
+include-invalid=name,names
+
+# List of member names, which should be excluded from the invalid access warning.
+exclude-invalid=_
+
+# List of class names for which member variables should not be checked (useful
+# for classes with dynamically set attributes). This supports the use of regular
+# expressions.
+exclude-too-few-public-methods=
+
+# List of classes that can be ignored when checking for unnecessary pass statements.
+ignore-on-opaque-inference=
+
+# Minimum number of public methods for a class (see R0903).
+min-public-methods=2
+
+# Maximum number of public methods for a class (see R0904).
+max-public-methods=20
+
+[DESIGN]
+
+# Maximum number of arguments for function / method
+max-args=5
+
+# Maximum number of locals for function / method body
+max-locals=15
+
+# Maximum number of return / yield for function / method body
+max-returns=6
+
+# Maximum number of branch for function / method body
+max-branches=12
+
+# Maximum number of statements in function / method body
+max-statements=50
+
+# Maximum number of parents for a class (see R0901).
+max-parents=7
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes=7
+
+# Minimum number of public methods for a class (see R0903).
+min-public-methods=2
+
+# Maximum number of public methods for a class (see R0904).
+max-public-methods=20
+
+# Maximum number of lines per module (see R0902).
+max-module-lines=1000
+
+# List of regular expressions of function / method names that do not need a
+# docstring. This is typically useful for __init__ methods.
+no-docstring-rgx=^_
+
+# List of regular expressions of class names that do not need a docstring.
+no-docstring-class-rgx=^Test[A-Z].*
+
+# Minimum number of lines in a function / method. This is typically useful for
+# __init__ methods.
+min-lines=3
+
+# Maximum number of boolean expressions in a if statement (see R0916).
+max-bool-expr=5
+
+[EXCEPTIONS]
+
+# Exceptions that will emit a warning when being caught. Defaults to
+# "Exception" and "BaseException".
+overgeneral-exceptions=Exception,BaseException,StandardError
+
+# Exceptions that will emit a warning when being caught. Defaults to
+# "Exception" and "BaseException".
+overgeneral-exceptions=Exception
+
+# Exceptions that will not emit a warning when being caught.
+ignored-exceptions=NotImplementedError,StopIteration,GeneratorExit,SystemExit
+
+# Exceptions that will not emit a warning when being caught.
+ignored-classes=NotImplementedError
+
+# List of module names for which member variables should not be considered as
+# attributes.
+ignored-classes=NotImplementedError,StopIteration,GeneratorExit,SystemExit
+
+# List of exception names that should not be raised.
+forbidden-raise=Exception,BaseException
+
+[REFACTORING]
+
+# Maximum number of nested blocks for function / method body
+max-nested-blocks=5
+
+# Complete name of functions that never returns. When checking for
+# inconsistent-return-statements if a never returning function is called then it
+# will not be considered as an explicit return statement.
+never-returning-functions=sys.exit,argparse.parse_error
+
+# Maximum number of local variables for function / method body
+max-locals=15
+
+# Maximum number of boolean expressions in a if statement (see R0916).
+max-bool-expr=5
+
+# Minimum number of public methods for a class (see R0903).
+min-public-methods=2
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes=7
+
+# Maximum number of public methods for a class (see R0904).
+max-public-methods=20
+
+[REPORTS]
+
+# Set the output format. Available formats are text, parseable, colorized, json
+# and msvs (visual studio). You can also give a reporter class, e.g.
+# mypackage.mymodule.MyReportClass.
+output-format=text
+
+# Tells whether to display a full report or only the messages.
+reports=yes
+
+# Python expression which should return a score less than or equal to 10. You have access
+# to the variables 'fatal', 'error', 'warning', 'refactor', 'convention', 'info' which
+# contain the number of messages in each category, as well as 'statement' which is the
+# total number of statements analyzed. This score is used by the global evaluation report
+# (RP0004).
+score=10.0
+
+# Activate the evaluation score.
+score=yes
+
+# Evaluate the score.
+score=yes
+
+# Add the comments to the evaluation report.
+comment=yes
+
+# Add the score to the evaluation report.
+score=yes
+
+# Evaluate the score.
+score=yes
+
+# Activate the evaluation score.
+score=yes
+
+# Evaluate the score.
+score=yes
+
+# Activate the evaluation score.
+score=yes
+
+[STRING]
+
+# This flag controls whether the implicit-string-concat-in-sequence is triggered
+# on two strings separated by the comment.
+check-str-concat-over-line-jumps=no
+
+# This flag controls whether the implicit-str-concat-in-sequence should be
+# triggered on implicit literal string concatenation.
+check-quote-consistency=no
+
+# This flag controls whether the implicit-str-concat-in-sequence should be
+# triggered on implicit literal string concatenation.
+check-str-concat-over-line-jumps=no
+
+# This flag controls whether the implicit-str-concat-in-sequence should be
+# triggered on implicit literal string concatenation.
+check-quote-consistency=no
+
+[LOGGING]
+
+# Logging modules to check that the string format arguments are in logging
+# function parameter format.
+logging-modules=logging
+
+# Logging format style.
+logging-format-style=new
+
+# Logging format style.
+logging-format-style=new
+
+# Logging format style.
+logging-format-style=new
+
+[SIMILARITIES]
+
+# Minimum lines number of a similarity.
+min-similarity-lines=7
+
+# Ignore comments when computing similarities.
+ignore-comments=yes
+
+# Ignore docstrings when computing similarities.
+ignore-docstrings=yes
+
+# Ignore imports when computing similarities.
+ignore-imports=no
+
+# Signatures for similarities to ignore
+ignore-signatures=no
+
+# Don't check imports when computing similarities.
+ignore-imports=no
+
+# Don't check docstrings when computing similarities.
+ignore-docstrings=yes
+
+# Don't check comments when computing similarities.
+ignore-comments=yes
+
+# Minimum lines number of a similarity.
+min-similarity-lines=7
+
+[SPELLING]
+
+# Spelling dictionary name. Available dictionaries: none. To make it work,
+# install the python-enchant package.
+spelling-dict=
+
+# A path to a file that contains the dictionary to use, relative to the current
+# working directory.
+spelling-private-dict-file=
+
+# Tells whether to store unknown words to the private dictionary (see the
+# --spelling-private-dict-file option) instead of raising a message.
+spelling-store-unknown-words=no
+
+# List of comma separated words that should be considered directives if they
+# appear at the beginning of a comment and should not be checked.
+spelling-ignore-comment-directives=fmt: on,fmt: off,noqa:,noqa,nosec,isort:skip,mypy: skip
+
+# List of comma separated words that should not be checked.
+spelling-ignore-words=
+
+# List of comma separated words that should always be considered wrong.
+spelling-ignore-words=
+
+# Maximum number of characters in a word.
+spelling-max-word-length=20
+
+# Maximum number of characters in a word.
+spelling-max-word-length=20
+
+[IMPORTS]
+
+# Deprecated modules which should not be used, separated by a comma.
+deprecated-modules=
+
+# Create a graph of every (i.e. internal and external) dependency in the
+# given file, to detect unused imports.
+import-graph=
+
+# Create a graph of external dependencies in the given file, to detect unused
+# imports.
+ext-import-graph=
+
+# Create a graph of internal dependencies in the given file, to detect unused
+# imports.
+int-import-graph=
+
+# Force import order to recognize a module as part of the standard
+# compatibility libraries.
+known-standard-library=
+
+# Force import order to recognize a module as part of a third party library.
+known-third-party=
+
+# Force import order to recognize a module as part of the first party library.
+known-first-party=
+
+# Analyse import fallback blocks. This can be used to support both Python 2 and
+# 3 compatible code, which means that the block might have code that exists
+# only in one version and will be imported on the other version of the language.
+analyse-fallback-blocks=no
+
+# Force import order to recognize a module as part of a third party library.
+known-third-party=enchant

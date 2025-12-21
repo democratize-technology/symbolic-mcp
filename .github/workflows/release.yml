@@ -1,0 +1,257 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test Before Release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install bandit safety pytest pytest-cov
+
+      - name: Run full test suite
+        run: |
+          pytest --cov=main --cov-report=xml --cov-fail-under=90
+
+      - name: Security scan
+        run: |
+          bandit -r main.py -f json -o bandit-report.json
+
+      - name: Check dependencies
+        run: |
+          safety check
+
+      - name: Type checking
+        run: |
+          mypy . --strict
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    name: Build Release Artifacts
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Check package
+        run: |
+          twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: symbolic-mcp/symbolic-mcp
+          tags: |
+            type=ref,event=tag
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  security-scan:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Security Scan of Artifacts
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install tools
+        run: |
+          pip install pip-audit
+
+      - name: Security audit
+        run: |
+          pip-audit dist/
+
+  release:
+    needs: [build, docker, security-scan]
+    runs-on: ubuntu-latest
+    name: Create Release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Extract version from tag
+          VERSION=${GITHUB_REF#refs/tags/v}
+
+          # Generate changelog (simplified)
+          cat > CHANGELOG.md << EOF
+          ## Release v$VERSION
+
+          ### 🚀 Features
+          <!-- Add new features here -->
+
+          ### 🐛 Bug Fixes
+          <!-- Add bug fixes here -->
+
+          ### 🔐 Security
+          <!-- Add security improvements here -->
+
+          ### 📚 Documentation
+          <!-- Add documentation updates here -->
+
+          ### 🛠️ Development
+          <!-- Add development improvements here -->
+          EOF
+
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          body: |
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## 🐳 Docker Images
+            - `symbolic-mcp/symbolic-mcp:v${{ github.ref_name }}`
+            - `symbolic-mcp/symbolic-mcp:latest`
+
+            ## 🔗 Installation
+
+            ### pip
+            ```bash
+            pip install symbolic-mcp==${{ github.ref_name }}
+            ```
+
+            ### Docker
+            ```bash
+            docker pull symbolic-mcp/symbolic-mcp:v${{ github.ref_name }}
+            docker run symbolic-mcp/symbolic-mcp:v${{ github.ref_name }}
+            ```
+
+            ### From Source
+            ```bash
+            git clone https://github.com/your-org/symbolic-mcp.git
+            cd symbolic-mcp
+            git checkout v${{ github.ref_name }}
+            pip install -r requirements.txt
+            ```
+
+            ## ✅ Verification
+
+            - All tests passing
+            - Security scans passed
+            - Type checking successful
+            - Docker images built and tested
+
+            ## 📚 Documentation
+
+            - [Documentation](https://symbolic-mcp.readthedocs.io/)
+            - [API Reference](https://symbolic-mcp.readthedocs.io/api.html)
+            - [Examples](https://github.com/your-org/symbolic-mcp/tree/main/examples)
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

@@ -1,0 +1,177 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+
+# =============================================================================
+# Symbolic MCP - Commitlint Configuration
+# Security-focused symbolic execution MCP server
+# =============================================================================
+
+# Conventional Commits specification
+# https://www.conventionalcommits.org/en/v1.0.0/
+
+# Rules for commit message validation
+rules:
+  # Body rules
+  body-max-length:
+    - 2
+    - always
+    - 72
+
+  body-max-line-length:
+    - 2
+    - always
+    - 72
+
+  body-min-length:
+    - 2
+    - always
+    - 0
+
+  # Footer rules
+  footer-max-length:
+    - 2
+    - always
+    - 72
+
+  footer-max-line-length:
+    - 2
+    - always
+    - 72
+
+  footer-min-length:
+    - 2
+    - always
+    - 0
+
+  # Header rules
+  header-max-length:
+    - 2
+    - always
+    - 72
+
+  header-min-length:
+    - 2
+    - always
+    - 0
+
+  # Scope rules (optional but recommended)
+  scope-enum:
+    - 2
+    - always
+    - # Scopes for symbolic execution MCP project
+    - core
+    - security
+    - symbolic-execution
+    - crosshair
+    - fastmcp
+    - mcp
+    - tools
+    - api
+    - tests
+    - docs
+    - ci
+    - deps
+    - build
+    - config
+    - perf
+    - refactor
+    - chore
+
+  scope-empty:
+    - 2
+    - never
+
+  scope-case:
+    - 2
+    - always
+    - lower-case
+
+  # Subject rules
+  subject-case:
+    - 2
+    - never
+    - # Only allow sentence-case, start-case, pascal-case, upper-case
+    - sentence-case
+    - start-case
+    - pascal-case
+    - upper-case
+
+  subject-empty:
+    - 2
+    - never
+
+  subject-full-stop:
+    - 2
+    - never
+    - "."
+
+  subject-exclamation-mark:
+    - 2
+    - never
+    - "!"
+
+  # Type rules
+  type-enum:
+    - 2
+    - always
+    - # Conventional commit types
+    - feat        # A new feature
+    - fix         # A bug fix
+    - docs        # Documentation only changes
+    - style       # Changes that do not affect the meaning of the code
+    - refactor    # A code change that neither fixes a bug nor adds a feature
+    - perf        # A code change that improves performance
+    - test        # Adding missing tests or correcting existing tests
+    - build       # Changes that affect the build system or external dependencies
+    - ci          # Changes to our CI configuration files and scripts
+    - chore       # Other changes that don't modify src or test files
+    - revert      # Reverts a previous commit
+    - # Security-specific types for symbolic execution project
+    - security    # Security vulnerability fixes
+    - audit       # Security audit findings and remediation
+    - vuln        # Vulnerability fixes
+    - cve         # CVE-specific fixes
+
+  type-empty:
+    - 2
+    - never
+
+  type-case:
+    - 2
+    - always
+    - lower-case
+
+# URL to the commitlint configuration file (for extending)
+extends: []
+
+# Wildcard patterns to ignore when linting
+ignores:
+  - '.*'
+  - '**/.*'
+  - 'node_modules/**'
+  - 'build/**'
+  - 'dist/**'
+  - 'coverage/**'
+  - '*.min.js'
+
+# Define the parser used by commitlint
+parserPreset: conventional-changelog-angular
+
+# Formatter for commitlint output
+formatter: '@commitlint/format'
+
+# Help message customization
+helpUrl: 'https://www.conventionalcommits.org/en/v1.0.0/'
+
+# Additional configurations for symbolic execution project
+defaultIgnores: true
+
+# Example commit messages for the symbolic execution project:
+# feat(core): add symbolic execution engine integration
+# fix(security): resolve code injection vulnerability in eval() function
+# test(crosshair): add comprehensive tests for CrossHair integration
+# docs(api): update API documentation for symbolic execution tools
+# security(cve-2024-12345): implement fix for remote code execution vulnerability
+# refactor(mcp): simplify MCP protocol handling logic
+# perf(symbolic-execution): optimize path exploration algorithm
+# ci(build): add automated security scanning to CI pipeline

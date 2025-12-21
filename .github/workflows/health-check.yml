@@ -1,0 +1,225 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+
+name: Project Health Check
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      detailed_report:
+        description: 'Generate detailed health report'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    name: Health Check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install bandit safety pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=main --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: Security scan with Bandit
+        run: |
+          bandit -r main.py -f json -o bandit-report.json
+
+      - name: Check dependencies for vulnerabilities
+        run: |
+          safety check --json --output safety-report.json || true
+
+      - name: Type checking with mypy
+        run: |
+          mypy . --strict --junit-xml mypy-report.xml || true
+
+      - name: Code quality with flake8
+        run: |
+          flake8 . --format=json --output-file=flake8-report.json || true
+
+      - name: Check documentation build
+        run: |
+          if [ -d "docs" ]; then
+            cd docs
+            if [ -f "requirements.txt" ]; then
+              pip install -r requirements.txt
+            fi
+            make html || sphinx-build -b html . _build/html || echo "No docs build system found"
+          fi
+
+      - name: Generate health report
+        run: |
+          python << 'EOF'
+          import json
+          import os
+          from datetime import datetime
+
+          # Load reports
+          reports = {}
+
+          # Load bandit report
+          if os.path.exists('bandit-report.json'):
+              with open('bandit-report.json') as f:
+                  bandit = json.load(f)
+                  reports['security'] = {
+                      'high_issues': len([r for r in bandit.get('results', []) if r.get('issue_severity') == 'HIGH']),
+                      'medium_issues': len([r for r in bandit.get('results', []) if r.get('issue_severity') == 'MEDIUM']),
+                      'low_issues': len([r for r in bandit.get('results', []) if r.get('issue_severity') == 'LOW']),
+                      'status': 'PASS' if len([r for r in bandit.get('results', []) if r.get('issue_severity') in ['HIGH', 'MEDIUM']]) == 0 else 'FAIL'
+                  }
+
+          # Load safety report
+          if os.path.exists('safety-report.json'):
+              with open('safety-report.json') as f:
+                  safety = json.load(f)
+                  reports['dependencies'] = {
+                      'vulnerabilities': len(safety.get('vulnerabilities', [])),
+                      'status': 'PASS' if len(safety.get('vulnerabilities', [])) == 0 else 'FAIL'
+                  }
+
+          # Generate summary
+          health_data = {
+              'timestamp': datetime.now().isoformat(),
+              'reports': reports,
+              'overall_status': 'PASS' if all(r.get('status') == 'PASS' for r in reports.values()) else 'FAIL'
+          }
+
+          with open('health-summary.json', 'w') as f:
+              json.dump(health_data, f, indent=2)
+
+          print("Health check completed!")
+          print(f"Overall status: {health_data['overall_status']}")
+          for category, data in reports.items():
+              print(f"{category.title()}: {data['status']}")
+          EOF
+
+      - name: Comment on issue if health check fails
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+
+            try {
+              const healthData = JSON.parse(fs.readFileSync('health-summary.json', 'utf8'));
+
+              const body = `
+              ## 🏥 Health Check Failed
+
+              **Timestamp**: ${healthData.timestamp}
+              **Overall Status**: ${healthData.overall_status}
+
+              ### Failed Checks
+              ${Object.entries(healthData.reports)
+                .filter(([_, data]) => data.status === 'FAIL')
+                .map(([category, data]) => `- **${category}**: ${JSON.stringify(data, null, 2)}`)
+                .join('\n')}
+
+              ### Next Steps
+              1. Review the failed checks above
+              2. Address security vulnerabilities or quality issues
+              3. Update dependencies if needed
+              4. Re-run health check
+
+              ---
+              *This is an automated health check. Human review may be needed.*
+              `;
+
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🏥 Health Check Failed - ${new Date().toISOString().split('T')[0]}`,
+                body: body,
+                labels: ['health-check', 'automated']
+              });
+            } catch (error) {
+              console.log('Could not read health data:', error.message);
+            }
+
+  detailed-report:
+    runs-on: ubuntu-latest
+    name: Detailed Health Report
+    if: github.event.inputs.detailed_report == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate detailed metrics
+        run: |
+          python << 'EOF'
+          import subprocess
+          import json
+          from datetime import datetime
+
+          # Get commit stats
+          commit_count = subprocess.run(['git', 'rev-list', '--count', 'HEAD'],
+                                     capture_output=True, text=True).stdout.strip()
+
+          # Get contributor count
+          contributors = subprocess.run(['git', 'shortlog', '-sn', 'HEAD'],
+                                      capture_output=True, text=True).stdout.strip()
+          contributor_count = len(contributors.split('\n')) if contributors else 0
+
+          # Get recent activity
+          recent_commits = subprocess.run(['git', 'log', '--since', '1 month ago', '--oneline'],
+                                        capture_output=True, text=True).stdout.strip()
+          recent_commit_count = len(recent_commits.split('\n')) if recent_commits else 0
+
+          # Check issue stats (if GitHub token available)
+          issue_stats = {}
+
+          detailed_report = {
+              'timestamp': datetime.now().isoformat(),
+              'repository_stats': {
+                  'total_commits': int(commit_count) if commit_count else 0,
+                  'total_contributors': contributor_count,
+                  'recent_commits_30d': recent_commit_count
+              },
+              'issue_stats': issue_stats
+          }
+
+          with open('detailed-health-report.json', 'w') as f:
+              json.dump(detailed_report, f, indent=2)
+
+          print("Detailed health report generated!")
+          print(f"Total commits: {detailed_report['repository_stats']['total_commits']}")
+          print(f"Total contributors: {detailed_report['repository_stats']['total_contributors']}")
+          print(f"Recent commits (30d): {detailed_report['repository_stats']['recent_commits_30d']}")
+          EOF
+
+      - name: Upload health reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: health-reports
+          path: |
+            health-summary.json
+            detailed-health-report.json
+            bandit-report.json
+            safety-report.json
+          retention-days: 30

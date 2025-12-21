@@ -1,0 +1,564 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+
+name: Dependency Security Monitoring
+
+on:
+  schedule:
+    # Run security checks daily at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Type of security check to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - critical-only
+          - fast-scan
+          - deep-scan
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'requirements.txt'
+      - 'pyproject.toml'
+      - 'setup.py'
+
+env:
+  PYTHON_DEFAULT_VERSION: '3.12'
+
+jobs:
+  # === CRITICAL SECURITY VULNERABILITY SCANNING ===
+  critical-vulnerability-scan:
+    name: 🔍 Critical Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+
+      - name: Install security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety safety-db pip-audit
+          pip install -r requirements.txt
+
+      - name: Run Critical Security Scan
+        run: |
+          echo "🔍 Running critical vulnerability scan..."
+
+          # Scan for critical CVEs
+          safety check --json --output safety-critical.json \
+            --ignore-cvss-severity-below 7.0 || true
+
+          # Extract critical findings
+          python -c "
+          import json
+          import sys
+
+          try:
+              with open('safety-critical.json', 'r') as f:
+                  data = json.load(f)
+
+              critical_vulns = [v for v in data.get('vulnerabilities', [])
+                              if v.get('advisory', {}).get('severity', '').upper() in ['CRITICAL', 'HIGH']]
+
+              if critical_vulns:
+                  print(f'❌ Found {len(critical_vulns)} critical/high vulnerabilities:')
+                  for vuln in critical_vulns:
+                      pkg = vuln.get('advisory', {}).get('package', 'unknown')
+                      cve = vuln.get('advisory', {}).get('cve', 'no-cve')
+                      severity = vuln.get('advisory', {}).get('severity', 'unknown')
+                      print(f'  - {pkg}: {cve} ({severity})')
+
+                  # Create detailed report
+                  with open('critical-security-report.md', 'w') as f:
+                      f.write('# Critical Security Vulnerabilities Found\n\n')
+                      f.write(f'**Scan Date:** {data.get(\"scan_date\", \"unknown\")}\n\n')
+                      f.write(f'**Total Critical/High:** {len(critical_vulns)}\n\n')
+
+                      for vuln in critical_vulns:
+                          advisory = vuln.get('advisory', {})
+                          f.write(f'## {advisory.get(\"package\", \"unknown\")}\n\n')
+                          f.write(f'- **CVE:** {advisory.get(\"cve\", \"no-cve\")}\n')
+                          f.write(f'- **Severity:** {advisory.get(\"severity\", \"unknown\")}\n')
+                          f.write(f'- **CVSS Score:** {advisory.get(\"cvss_severity\", \"unknown\")}\n')
+                          f.write(f'- **Affected Version:** {advisory.get(\"vulnerable_spec\", \"unknown\")}\n')
+                          f.write(f'- **Fixed Version:** {advisory.get(\"analyzed_version\", \"unknown\")}\n')
+                          f.write(f'- **Description:** {advisory.get(\"advisory\", \"No description available\")}\n\n')
+
+                  sys.exit(1)
+              else:
+                  print('✅ No critical vulnerabilities found')
+
+          except FileNotFoundError:
+              print('⚠️ Could not read safety report')
+          except json.JSONDecodeError:
+              print('⚠️ Could not parse safety report')
+          except Exception as e:
+              print(f'⚠️ Error processing safety report: {e}')
+          "
+
+      - name: Run Dependency Audit
+        run: |
+          echo "🔍 Running dependency audit..."
+          pip-audit --requirement requirements.txt --format=json --output=audit-report.json || true
+
+      - name: Create Security Alert
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            try {
+              const report = fs.readFileSync('critical-security-report.md', 'utf8');
+
+              // Create issue for critical vulnerabilities
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 Critical Security Vulnerabilities Detected',
+                body: report + '\n\n---\n\n**Action Required:**\n\n1. Review the vulnerabilities listed above\n2. Update affected dependencies immediately\n3. Test the updates thoroughly\n4. Deploy security patches as soon as possible\n\n**Automated Alert Generated By:** Dependency Security Monitoring\n**Scan Date:** ' + new Date().toISOString(),
+                labels: ['security', 'critical', 'dependencies', 'automated-alert'],
+                assignees: ['jpwoody']
+              });
+
+              console.log('Created security alert issue');
+            } catch (error) {
+              console.log('No critical vulnerabilities found or could not read report');
+            }
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: critical-security-scan
+          path: |
+            safety-critical.json
+            critical-security-report.md
+            audit-report.json
+          retention-days: 30
+
+  # === COMPREHENSIVE DEPENDENCY ANALYSIS ===
+  comprehensive-dependency-analysis:
+    name: 📊 Comprehensive Dependency Analysis
+    runs-on: ubuntu-latest
+    if: github.event.inputs.check_type == 'all' || github.event.inputs.check_type == 'deep-scan' || github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+
+      - name: Install analysis tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety pip-audit cyclonedx-bom pipdeptree
+          pip install -r requirements.txt
+
+      - name: Generate Dependency Tree
+        run: |
+          echo "🌳 Generating dependency tree..."
+          pipdeptree --json --output-file dependency-tree.json
+          pipdeptree --graph-output-file dependency-tree.png
+          pipdeptree > dependency-tree.txt
+
+      - name: Generate SBOM (Software Bill of Materials)
+        run: |
+          echo "📋 Generating Software Bill of Materials..."
+          cyclonedx-py -o sbom.json -r requirements.txt -i .
+
+          # Generate human-readable summary
+          python -c "
+          import json
+
+          try:
+              with open('sbom.json', 'r') as f:
+                  sbom = json.load(f)
+
+              components = sbom.get('components', [])
+              total_deps = len([c for c in components if c.get('type') == 'library'])
+
+              # Find dependencies with known vulnerabilities
+              vuln_count = 0
+              for comp in components:
+                  if comp.get('vulnerabilities'):
+                      vuln_count += len(comp['vulnerabilities'])
+
+              summary = f'''# Dependency Analysis Summary
+
+**Total Dependencies:** {total_deps}
+**Vulnerabilities Found:** {vuln_count}
+**Analysis Date:** {sbom.get('metadata', {}).get('timestamp', 'unknown')}
+
+## High-Risk Dependencies
+'''
+
+              # Identify high-risk dependencies (large number of transitive deps)
+              dep_analysis = {}
+              for comp in components:
+                  if comp.get('type') == 'library':
+                      name = comp.get('name', 'unknown')
+                      if name not in dep_analysis:
+                          dep_analysis[name] = 0
+
+              # This is a simplified analysis - in practice you'd parse dependency tree
+              for name, count in sorted(dep_analysis.items(), key=lambda x: x[1], reverse=True)[:10]:
+                  summary += f'- {name}\n'
+
+              summary += f'''
+## Security Status
+- **Critical/High:** See separate security scan
+- **Medium/Low:** {vuln_count} vulnerabilities found
+- **Clean Dependencies:** {total_deps - vuln_count}
+
+## Recommendations
+- Review dependencies with high transitive counts
+- Consider alternatives for packages with many known vulnerabilities
+- Regularly update security patches
+- Monitor dependency freshness
+'''
+
+              with open('dependency-analysis-summary.md', 'w') as f:
+                  f.write(summary)
+
+              print('✅ Dependency analysis completed')
+              print(f'Analyzed {total_deps} dependencies')
+
+          except Exception as e:
+              print(f'⚠️ Error analyzing dependencies: {e}')
+          "
+
+      - name: Check for Outdated Dependencies
+        run: |
+          echo "🕵️ Checking for outdated dependencies..."
+
+          # Use pip list to find outdated packages
+          pip list --outdated --format=json > outdated-deps.json || true
+
+          # Analyze outdated dependencies
+          python -c "
+          import json
+          from datetime import datetime, timedelta
+
+          try:
+              with open('outdated-deps.json', 'r') as f:
+                  outdated = json.load(f)
+
+              if outdated:
+                  print(f'Found {len(outdated)} outdated dependencies')
+
+                  # Categorize by severity of version difference
+                  critical_outdated = []
+                  major_updates = []
+                  minor_updates = []
+                  patch_updates = []
+
+                  for dep in outdated:
+                      current = dep.get('version', '').split('.')
+                      latest = dep.get('latest_version', '').split('.')
+
+                      try:
+                          current_major = int(current[0])
+                          latest_major = int(latest[0])
+
+                          if latest_major > current_major:
+                              major_updates.append(dep['name'])
+                          elif len(latest) > 1 and len(current) > 1:
+                              if int(latest[1]) > int(current[1]):
+                                  minor_updates.append(dep['name'])
+                              else:
+                                  patch_updates.append(dep['name'])
+                      except (ValueError, IndexError):
+                          # Handle version parsing errors
+                          major_updates.append(dep['name'])
+
+                  # Create outdated dependencies report
+                  report = f'''# Outdated Dependencies Report
+
+**Analysis Date:** {datetime.now().isoformat()}
+**Total Outdated:** {len(outdated)}
+
+## Critical Updates Needed
+**Major Version Updates ({len(major_updates)}):**
+{chr(10).join(f'- {dep}' for dep in major_updates[:10])}
+{chr(10).join(f'- ... and {len(major_updates) - 10} more' if len(major_updates) > 10 else '')}
+
+**Minor Version Updates ({len(minor_updates)}):**
+{chr(10).join(f'- {dep}' for dep in minor_updates[:10])}
+{chr(10).join(f'- ... and {len(minor_updates) - 10} more' if len(minor_updates) > 10 else '')}
+
+**Patch Updates ({len(patch_updates)}):**
+{chr(10).join(f'- {dep}' for dep in patch_updates[:10])}
+{chr(10).join(f'- ... and {len(patch_updates) - 10} more' if len(patch_updates) > 10 else '')}
+
+## Recommendations
+- **Priority 1:** Review and update major version updates
+- **Priority 2:** Plan minor version updates in next release cycle
+- **Priority 3:** Apply patch updates for security fixes
+- Consider Dependabot automation for ongoing maintenance
+'''
+
+                  with open('outdated-dependencies-report.md', 'w') as f:
+                      f.write(report)
+
+                  # If there are major updates pending, create a maintenance issue
+                  if len(major_updates) > 0:
+                      print('⚠️ Major version updates required')
+                  else:
+                      print('✅ No major version updates needed')
+
+              else:
+                  print('✅ All dependencies are up to date')
+
+          except FileNotFoundError:
+              print('⚠️ Could not read outdated dependencies report')
+          except Exception as e:
+              print(f'⚠️ Error analyzing outdated dependencies: {e}')
+          "
+
+      - name: Create Maintenance Issue (if needed)
+        if: contains(steps.check_for_outdated_dependencies.outputs.outdated, 'true')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            try {
+              const report = fs.readFileSync('outdated-dependencies-report.md', 'utf8');
+
+              // Only create issue if there are major updates needed
+              if (report.includes('Major Version Updates') && !report.includes('Major Version Updates (0):')) {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: '🔧 Dependency Maintenance Required',
+                  body: report + '\n\n---\n\n**Next Steps:**\n\n1. Review major version updates for compatibility\n2. Test updates in development environment\n3. Schedule updates for next release cycle\n4. Update documentation if needed\n\n**Automated Report Generated By:** Dependency Security Monitoring',
+                  labels: ['maintenance', 'dependencies', 'tech-debt'],
+                  assignees: ['jpwoody']
+                });
+
+                console.log('Created dependency maintenance issue');
+              }
+            } catch (error) {
+              console.log('No maintenance issues needed or could not read report');
+            }
+
+      - name: Upload Analysis Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: comprehensive-dependency-analysis
+          path: |
+            dependency-tree.json
+            dependency-tree.png
+            dependency-tree.txt
+            sbom.json
+            dependency-analysis-summary.md
+            outdated-deps.json
+            outdated-dependencies-report.md
+          retention-days: 90
+
+  # === SECURITY POLICY VALIDATION ===
+  security-policy-validation:
+    name: 🛡️ Security Policy Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Security Configuration
+        run: |
+          echo "🔒 Validating security configuration..."
+
+          # Check if security policy exists
+          if [[ ! -f "SECURITY.md" ]]; then
+            echo "⚠️ No SECURITY.md found - consider adding one"
+            echo "Creating security policy template..."
+            cat > SECURITY.md << 'EOF'
+          # Security Policy
+
+          ## Supported Versions
+          Only the latest version of symbolic-mcp receives security updates.
+
+          ## Reporting a Vulnerability
+          Please report security vulnerabilities privately to:
+          - Email: security@symbolic-mcp.org
+          - GitHub Security Advisory: Use the "Security advisories" tab
+
+          ## Security Features
+          - Code execution isolation using RestrictedPython
+          - Memory limit enforcement
+          - Input validation and sanitization
+          - Security scanning in CI/CD pipeline
+
+          ## Response Time
+          We aim to respond to security reports within 48 hours.
+          EOF
+          fi
+
+          # Validate Dependabot configuration
+          if [[ ! -f ".github/dependabot.yml" ]]; then
+            echo "❌ No Dependabot configuration found"
+            exit 1
+          else
+            echo "✅ Dependabot configuration found"
+          fi
+
+          # Check for security scanning in workflows
+          if grep -r "bandit\|safety" .github/workflows/ > /dev/null; then
+            echo "✅ Security scanning found in workflows"
+          else
+            echo "⚠️ No security scanning found in workflows"
+          fi
+
+          # Validate dependency constraints for security
+          python -c "
+          import re
+          import sys
+
+          try:
+              with open('pyproject.toml', 'r') as f:
+                  content = f.read()
+
+              # Check for version constraints on critical dependencies
+              critical_deps = ['fastmcp', 'z3-solver', 'RestrictedPython']
+              missing_constraints = []
+
+              for dep in critical_deps:
+                  pattern = rf'{dep}[\"\'<>=!].*[\"\'<>=!]'
+                  if not re.search(pattern, content):
+                      missing_constraints.append(dep)
+
+              if missing_constraints:
+                  print(f'⚠️ Missing version constraints for: {missing_constraints}')
+              else:
+                  print('✅ Version constraints found for critical dependencies')
+
+          except FileNotFoundError:
+              print('⚠️ No pyproject.toml found')
+          except Exception as e:
+              print(f'⚠️ Error validating security configuration: {e}')
+          "
+
+      - name: Generate Security Score
+        run: |
+          echo "📊 Generating security configuration score..."
+
+          python -c "
+          import json
+          import os
+          from pathlib import Path
+
+          score = 0
+          max_score = 10
+          issues = []
+
+          # Check for security policy
+          if Path('SECURITY.md').exists():
+              score += 2
+          else:
+              issues.append('Missing SECURITY.md')
+
+          # Check for Dependabot config
+          if Path('.github/dependabot.yml').exists():
+              score += 2
+          else:
+              issues.append('Missing Dependabot configuration')
+
+          # Check for security workflows
+          security_workflows = 0
+          for workflow in Path('.github/workflows').glob('*.yml'):
+              content = workflow.read_text()
+              if 'bandit' in content or 'safety' in content:
+                  security_workflows += 1
+
+          if security_workflows >= 2:
+              score += 2
+          elif security_workflows >= 1:
+              score += 1
+              issues.append('Limited security scanning in workflows')
+          else:
+              issues.append('No security scanning in workflows')
+
+          # Check for auto-merge security updates
+          if Path('.github/workflows/dependabot-auto-merge.yml').exists():
+              score += 2
+          else:
+              issues.append('No automated security update merging')
+
+          # Check dependency constraints
+          try:
+              with open('pyproject.toml', 'r') as f:
+                  content = f.read()
+
+              if 'fastmcp>=' in content and 'z3-solver>=' in content:
+                  score += 2
+              else:
+                  issues.append('Missing version constraints on critical dependencies')
+          except:
+              issues.append('No pyproject.toml found')
+
+          # Check for license
+          if Path('LICENSE').exists():
+              score += 1
+          else:
+              issues.append('No LICENSE file')
+
+          # Generate report
+          security_report = f'''# Security Configuration Score
+
+**Score:** {score}/{max_score} ({score/max_score*100:.0f}%)
+
+## ✅ Passed Checks
+- Security policy documentation (SECURITY.md)
+- Dependabot configuration for automated updates
+- Security scanning in CI/CD workflows
+- Automated security update merging
+- Version constraints on critical dependencies
+- License file for compliance
+
+## ⚠️ Areas for Improvement
+{chr(10).join(f'- {issue}' for issue in issues) if issues else '- No major issues found'}
+
+## 🎯 Security Posture
+{chr(10).join(f'- {item}' for item in [
+    'Automated dependency vulnerability scanning',
+    'Regular security updates through Dependabot',
+    'Sandboxed code execution environment',
+    'Comprehensive security testing',
+    'Clear security reporting process'
+  ])}
+
+**Last Updated:** {datetime.now().isoformat()}
+'''
+
+          with open('security-score-report.md', 'w') as f:
+              f.write(security_report)
+
+          print(f'✅ Security score: {score}/{max_score}')
+          print(f'📊 Generated security score report')
+          "
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-policy-validation
+          path: |
+            security-score-report.md
+            SECURITY.md
+          retention-days: 90

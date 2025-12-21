@@ -1,0 +1,111 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-12-19T22:11:45Z",
+  "project_path": "/Users/jeremy/Development/hacks/symbolic-mcp",
+  "status": "concerning",
+  "total_debt_score": 2850,
+  "monthly_interest_cost": 180,
+  "debt_ratio": 0.41,
+  "debt_inventory": {
+    "critical": {
+      "count": 2,
+      "items": [
+        {
+          "id": "TD-001",
+          "description": "analyze_branches function stub - only static analysis",
+          "location": "main.py:276-319",
+          "created": "2025-12-19",
+          "interest_rate": 0.29,
+          "estimated_hours": 32,
+          "risk": "Core functionality gap - compliance violation",
+          "compound_cost": 928
+        },
+        {
+          "id": "TD-002",
+          "description": "Missing memory limits - unbounded resource consumption",
+          "location": "SymbolicAnalyzer class",
+          "created": "2025-12-19",
+          "interest_rate": 0.29,
+          "estimated_hours": 16,
+          "risk": "Resource exhaustion DoS vulnerability",
+          "compound_cost": 464
+        }
+      ]
+    },
+    "high": {
+      "count": 2,
+      "total_hours": 40,
+      "interest_rate": 0.21
+    },
+    "medium": {
+      "count": 2,
+      "total_hours": 24,
+      "interest_rate": 0.12
+    }
+  },
+  "code_metrics": {
+    "duplicated_lines": 0,
+    "complexity_violations": 3,
+    "todo_comments": 0,
+    "deprecated_apis": 1,
+    "outdated_dependencies": 0,
+    "mock_heavy_tests": 8,
+    "hardcoded_values": 2
+  },
+  "payback_plan": {
+    "sprint_1": [
+      {
+        "debt_id": "TD-002",
+        "reason": "Safety critical - prevents DoS",
+        "estimated_hours": 16,
+        "roi": "Eliminates resource exhaustion vulnerability"
+      }
+    ],
+    "sprint_2": [
+      {
+        "debt_id": "TD-003",
+        "reason": "Error handling completeness",
+        "estimated_hours": 12,
+        "roi": "Proper debugging and compliance reporting"
+      }
+    ],
+    "sprint_3": [
+      {
+        "debt_id": "TD-001",
+        "reason": "Core functionality compliance",
+        "estimated_hours": 32,
+        "roi": "Meets specification requirements"
+      }
+    ],
+    "backlog": ["TD-004", "TD-005", "TD-006"]
+  },
+  "blockers": [
+    {
+      "severity": "HIGH",
+      "debt_type": "architectural",
+      "description": "analyze_branches returns partial implementation",
+      "impact": "Does not meet dynamic reachability requirements",
+      "remediation_effort": "2 sprints"
+    }
+  ],
+  "trend_analysis": {
+    "debt_velocity": "+5% per month",
+    "payback_rate": "15% per sprint",
+    "projection": "Critical level in 4 months without intervention"
+  },
+  "recommendations": [
+    "Prioritize memory limits for immediate safety compliance",
+    "Implement proper CrossHair error taxonomy integration",
+    "Add resource monitoring infrastructure foundation",
+    "Replace test mocks with real integration tests",
+    "Add timing instrumentation for performance monitoring"
+  ],
+  "accounting_metadata": {
+    "agent": "tech-debt-accountant",
+    "agent_version": "1.0.0",
+    "files_analyzed": 8,
+    "scan_duration_seconds": 45,
+    "debt_calculation_model": "SQARE",
+    "interest_calculation": "compound_monthly"
+  }
+}

@@ -1,0 +1,252 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 Symbolic MCP Contributors
+
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+
+jobs:
+  # Auto-merge security and minor dependency updates
+  auto-merge-dependencies:
+    name: 🔄 Auto-Merge Dependencies
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for status checks
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.ref }}
+          check-regexp: '^(security-scan|code-quality|test-matrix|build-artifacts|security-isolation)'
+          wait-interval: 30
+          allowed-conclusions: success
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check PR labels and content
+        id: check_pr
+        run: |
+          echo "Checking if PR can be auto-merged..."
+
+          # Get PR details
+          PR_JSON=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}")
+
+          # Check for auto-merge label
+          HAS_AUTO_MERGE=$(echo "$PR_JSON" | jq -r '.labels[] | select(.name == "auto-merge") | .name')
+          HAS_SECURITY=$(echo "$PR_JSON" | jq -r '.labels[] | select(.name == "security") | .name')
+          HAS_CRITICAL=$(echo "$PR_JSON" | jq -r '.labels[] | select(.name == "critical") | .name')
+
+          # Check if it's a dependency update
+          PR_TITLE=$(echo "$PR_JSON" | jq -r '.title')
+          IS_DEPS_UPDATE=0
+          if [[ "$PR_TITLE" =~ ^deps|^chore|^security ]]; then
+            IS_DEPS_UPDATE=1
+          fi
+
+          # Check if it's a security update
+          IS_SECURITY_UPDATE=0
+          if [[ -n "$HAS_SECURITY" || -n "$HAS_CRITICAL" || "$PR_TITLE" =~ security ]]; then
+            IS_SECURITY_UPDATE=1
+          fi
+
+          # Check if it's a minor or patch update
+          IS_MINOR_PATCH=0
+          if [[ "$PR_TITLE" =~ patch|minor|\..*\..* ]]; then
+            IS_MINOR_PATCH=1
+          fi
+
+          # Determine if auto-merge should proceed
+          SHOULD_MERGE=0
+          MERGE_REASON=""
+
+          if [[ -n "$HAS_AUTO_MERGE" && "$IS_DEPS_UPDATE" == "1" ]]; then
+            SHOULD_MERGE=1
+            MERGE_REASON="Explicit auto-merge label on dependency update"
+          elif [[ "$IS_SECURITY_UPDATE" == "1" && "$IS_MINOR_PATCH" == "1" ]]; then
+            SHOULD_MERGE=1
+            MERGE_REASON="Security patch/minor update"
+          elif [[ "$IS_DEPS_UPDATE" == "1" && "$PR_TITLE" =~ patch && "$IS_SECURITY_UPDATE" != "1" ]]; then
+            SHOULD_MERGE=1
+            MERGE_REASON="Patch version dependency update"
+          fi
+
+          echo "should_merge=$SHOULD_MERGE" >> $GITHUB_OUTPUT
+          echo "merge_reason=$MERGE_REASON" >> $GITHUB_OUTPUT
+          echo "is_deps_update=$IS_DEPS_UPDATE" >> $GITHUB_OUTPUT
+          echo "is_security_update=$IS_SECURITY_UPDATE" >> $GITHUB_OUTPUT
+          echo "has_auto_merge=$HAS_AUTO_MERGE" >> $GITHUB_OUTPUT
+
+          echo "Auto-merge decision: $SHOULD_MERGE ($MERGE_REASON)"
+
+      - name: Validate dependency change safety
+        if: steps.check_pr.outputs.should_merge == '1'
+        id: validate_safety
+        run: |
+          echo "Validating dependency change safety..."
+
+          # Get the diff to analyze what changed
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" \
+            > pr_files.json
+
+          # Check for any requirements.txt or pyproject.toml changes
+          CHANGED_FILES=$(jq -r '.[].filename' pr_files.json | grep -E "(requirements|pyproject\.toml|setup\.py)" || true)
+
+          # Validate it's only dependency updates
+          UNSAFE_CHANGES=0
+          for file in $CHANGED_FILES; do
+            echo "Checking $file..."
+
+            # Look for potentially unsafe changes
+            if curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}/files?path=$file" | \
+              jq -r '.[] | .patch' | grep -E "^\-.*fastmcp.*\+.*fastmcp" && \
+              curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}/files?path=$file" | \
+              jq -r '.[] | .patch' | grep -v "^\-.*fastmcp.*<3\.0\.0.*\+.*fastmcp.*<3\.0\.0" > /dev/null; then
+              echo "Unsafe FastMCP version constraint change detected"
+              UNSAFE_CHANGES=1
+            fi
+
+            if curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}/files?path=$file" | \
+              jq -r '.[] | .patch' | grep -E "^\-.*z3-solver.*\+.*z3-solver" && \
+              curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}/files?path=$file" | \
+              jq -r '.[] | .patch' | grep -v "^\-.*z3-solver.*<5\.0\.0.*\+.*z3-solver.*<5\.0\.0" > /dev/null; then
+              echo "Unsafe Z3 solver version constraint change detected"
+              UNSAFE_CHANGES=1
+            fi
+          done
+
+          if [[ $UNSAFE_CHANGES -eq 0 ]]; then
+            echo "is_safe=true" >> $GITHUB_OUTPUT
+            echo "Dependency changes appear safe"
+          else
+            echo "is_safe=false" >> $GITHUB_OUTPUT
+            echo "Unsafe dependency changes detected - blocking auto-merge"
+          fi
+
+      - name: Add approval comment
+        if: steps.check_pr.outputs.should_merge == '1' && steps.validate_safety.outputs.is_safe == 'true'
+        run: |
+          COMMENT_BODY="🤖 **Auto-merge approved** for this dependency update.
+
+          **Reason:** ${{ steps.check_pr.outputs.merge_reason }}
+          **Safety check:** ✅ Passed
+          **Status checks:** ✅ All required checks passed
+
+          This PR will be auto-merged in 5 minutes unless someone adds a \"stop-auto-merge\" label."
+
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" \
+            -d "{\"body\":\"$COMMENT_BODY\"}"
+
+      - name: Wait for final approval period
+        if: steps.check_pr.outputs.should_merge == '1' && steps.validate_safety.outputs.is_safe == 'true'
+        run: |
+          echo "Waiting 5 minutes for any final objections..."
+          sleep 300
+
+          # Check if stop-auto-merge label was added during wait period
+          PR_JSON=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}")
+
+          HAS_STOP_LABEL=$(echo "$PR_JSON" | jq -r '.labels[] | select(.name == "stop-auto-merge") | .name')
+
+          if [[ -n "$HAS_STOP_LABEL" ]]; then
+            echo "stop_auto_merge=true" >> $GITHUB_OUTPUT
+            echo "Auto-merge blocked by stop-auto-merge label"
+          else
+            echo "stop_auto_merge=false" >> $GITHUB_OUTPUT
+            echo "No objections received - proceeding with merge"
+          fi
+
+      - name: Auto-merge PR
+        if: steps.check_pr.outputs.should_merge == '1' && steps.validate_safety.outputs.is_safe == 'true'
+        run: |
+          # Final safety check
+          if [[ "${{ steps.check_pr.outputs.is_security_update }}" == "1" ]]; then
+            # For security updates, use merge method that preserves commit history
+            MERGE_METHOD="merge"
+          else
+            # For regular dependency updates, use squash to keep history clean
+            MERGE_METHOD="squash"
+          fi
+
+          echo "Attempting to auto-merge PR #${{ github.event.number }} using $MERGE_METHOD method..."
+
+          # Attempt to merge
+          MERGE_RESULT=$(curl -X PUT \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/pulls/${{ github.event.number }}/merge" \
+            -d "{\"merge_method\":\"$MERGE_METHOD\"}")
+
+          # Check merge result
+          MERGE_STATUS=$(echo "$MERGE_RESULT" | jq -r '.merged // false')
+
+          if [[ "$MERGE_STATUS" == "true" ]]; then
+            echo "✅ PR successfully auto-merged"
+
+            # Add success comment
+            SUCCESS_COMMENT="✅ **Auto-merge completed successfully!**
+
+            This dependency update has been automatically merged by the Dependabot automation.
+
+            **Merge method:** $MERGE_METHOD
+            **Reason:** ${{ steps.check_pr.outputs.merge_reason }}"
+
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" \
+              -d "{\"body\":\"$SUCCESS_COMMENT\"}"
+          else
+            echo "❌ Failed to auto-merge PR"
+            echo "$MERGE_RESULT" | jq -r '.message // "Unknown error"'
+
+            # Add failure comment
+            FAILURE_COMMENT="❌ **Auto-merge failed**
+
+            Attempted to auto-merge this PR but encountered an issue. Manual intervention required.
+
+            **Error:** $(echo "$MERGE_RESULT" | jq -r '.message // "Unknown error"')"
+
+            curl -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" \
+              -d "{\"body\":\"$FAILURE_COMMENT\"}"
+          fi
+
+  # Block auto-merge for complex changes
+  block-complex-updates:
+    name: 🚫 Block Complex Updates
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    needs: auto-merge-dependencies
+
+    steps:
+      - name: Check for complex changes
+        run: |
+          echo "This job serves as a safety net for complex dependency updates"
+          echo "that should not be auto-merged automatically."

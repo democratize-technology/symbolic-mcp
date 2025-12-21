@@ -1,0 +1,177 @@
+# =============================================================================
+# Symbolic MCP - Editor Configuration
+# Security-focused symbolic execution MCP server
+# =============================================================================
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Python files
+[*.py]
+charset = utf-8
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# Python test files
+[test_*.py]
+charset = utf-8
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# Configuration files
+[*.{toml,yaml,yml,ini,cfg}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# TOML files
+[*.toml]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.json]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+charset = utf-8
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false  # Markdown uses trailing spaces for line breaks
+
+# Documentation files
+[*.{rst,txt}]
+charset = utf-8
+indent_style = space
+indent_size = 3
+
+# Shell scripts
+[*.{sh,bash}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Docker files
+[Dockerfile*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Makefile
+[Makefile]
+charset = utf-8
+indent_style = tab
+indent_size = 4
+
+# Git files
+[.gitignore]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Pre-commit configuration
+[.pre-commit-config.yaml]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# GitHub Actions
+[.github/workflows/*.yml]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# CI/CD configuration files
+[*.{yml,yaml}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Configuration files for linting tools
+[.*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# JavaScript/TypeScript files (for any web frontend or build tools)
+[*.{js,ts,jsx,tsx}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# CSS/SCSS files
+[*.{css,scss,sass}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# HTML files
+[*.html]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# XML files
+[*.xml]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Configuration for security-related files
+[*.{key,pem,crt,der,p12,pfx}]
+charset = binary
+
+# Binary files
+[*.{png,jpg,jpeg,gif,ico,svg,bmp}]
+charset = binary
+
+# Compiled files
+[*.{pyc,pyo,pyd,so,dll,exe}]
+charset = binary
+
+# Archive files
+[*.{zip,tar,gz,bz2,rar,7z}]
+charset = binary
+
+# Virtual environment and dependency files
+[requirements*.txt]
+charset = utf-8
+indent_style = space
+indent_size = 4
+
+# Log files
+[*.log]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Security report files
+[*{security,audit,cve,vulnerability}*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+# Test report files
+[*{test,coverage,report}*]
+charset = utf-8
+indent_style = space
+indent_size = 2
