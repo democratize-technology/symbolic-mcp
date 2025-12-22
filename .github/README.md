@@ -14,10 +14,10 @@
 
 Making symbolic execution accessible and secure for everyone
 
-[![GitHub stars](https://img.shields.io/github/stars/your-org/symbolic-mcp.svg?style=social&label=Star)](https://github.com/your-org/symbolic-mcp)
-[![GitHub forks](https://img.shields.io/github/forks/your-org/symbolic-mcp.svg?style=social&label=Fork)](https://github.com/your-org/symbolic-mcp/fork)
-[![GitHub issues](https://img.shields.io/github/issues/your-org/symbolic-mcp.svg)](https://github.com/your-org/symbolic-mcp/issues)
-[![GitHub pull requests](https://img.shields.io/github/issues-pr/your-org/symbolic-mcp.svg)](https://github.com/your-org/symbolic-mcp/pulls)
+[![GitHub stars](https://img.shields.io/github/stars/democratize-technology/symbolic-mcp.svg?style=social&label=Star)](https://github.com/democratize-technology/symbolic-mcp)
+[![GitHub forks](https://img.shields.io/github/forks/democratize-technology/symbolic-mcp.svg?style=social&label=Fork)](https://github.com/democratize-technology/symbolic-mcp/fork)
+[![GitHub issues](https://img.shields.io/github/issues/democratize-technology/symbolic-mcp.svg)](https://github.com/democratize-technology/symbolic-mcp/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/democratize-technology/symbolic-mcp.svg)](https://github.com/democratize-technology/symbolic-mcp/pulls)
 
 </div>
 
@@ -45,7 +45,7 @@ Unlike traditional fuzzing, symbolic execution treats inputs as **symbolic varia
 ### Installation
 
 ```bash
-git clone https://github.com/your-org/symbolic-mcp.git
+git clone https://github.com/democratize-technology/symbolic-mcp.git
 cd symbolic-mcp
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
@@ -290,8 +290,8 @@ We welcome contributions! 🎉
 
 ### 💬 Getting Help
 
-- **GitHub Issues**: [Bug reports and feature requests](https://github.com/your-org/symbolic-mcp/issues)
-- **GitHub Discussions**: [General questions and discussions](https://github.com/your-org/symbolic-mcp/discussions)
+- **GitHub Issues**: [Bug reports and feature requests](https://github.com/democratize-technology/symbolic-mcp/issues)
+- **GitHub Discussions**: [General questions and discussions](https://github.com/democratize-technology/symbolic-mcp/discussions)
 - **Security Issues**: [Private vulnerability reporting](mailto:security@symbolic-mcp.org)
 - **Documentation**: [Complete documentation](https://symbolic-mcp.readthedocs.io/)
 
@@ -359,7 +359,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](../LICENS
 ### 📥 Quick Install
 
 ```bash
-git clone https://github.com/your-org/symbolic-mcp.git
+git clone https://github.com/democratize-technology/symbolic-mcp.git
 cd symbolic-mcp
 pip install -r requirements.txt
 python -m pytest tests/ -v
@@ -373,7 +373,7 @@ python -m pytest tests/ -v
 
 If you find Symbolic MCP useful, please consider giving us a ⭐ on GitHub!
 
-[![GitHub stars](https://img.shields.io/github/stars/your-org/symbolic-mcp.svg?style=social&label=Star&maxAge=2592000)](https://github.com/your-org/symbolic-mcp)
+[![GitHub stars](https://img.shields.io/github/stars/democratize-technology/symbolic-mcp.svg?style=social&label=Star&maxAge=2592000)](https://github.com/democratize-technology/symbolic-mcp)
 
 </div>
 

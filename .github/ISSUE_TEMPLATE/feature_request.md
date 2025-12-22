@@ -169,7 +169,7 @@ How will we know this feature is successful?
 
 ## 🔍 Related Issues & References
 
-- [ ] I have searched for [similar feature requests](https://github.com/your-org/symbolic-mcp/issues?q=is%3Aissue+label%3Aenhancement)
+- [ ] I have searched for [similar feature requests](https://github.com/democratize-technology/symbolic-mcp/issues?q=is%3Aissue+label%3Aenhancement)
 - [ ] This is not a duplicate of an existing request
 - [ ] **Related Issues**: #123, #456, #789
 - [ ] **External References**: Links to papers, tools, or documentation

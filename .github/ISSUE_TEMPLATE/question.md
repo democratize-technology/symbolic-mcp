@@ -187,9 +187,9 @@ result = symbolic_check(complex_code, "function", timeout_seconds=120)
 
 ### Community Resources
 
-- **GitHub Discussions**: [General questions and discussions](https://github.com/your-org/symbolic-mcp/discussions)
+- **GitHub Discussions**: [General questions and discussions](https://github.com/democratize-technology/symbolic-mcp/discussions)
 - **Documentation**: [Complete documentation](https://symbolic-mcp.readthedocs.io/)
-- **Examples**: [Usage examples](https://github.com/your-org/symbolic-mcp/tree/main/examples)
+- **Examples**: [Usage examples](https://github.com/democratize-technology/symbolic-mcp/tree/main/examples)
 - **Security Policy**: [Security questions and reporting](../SECURITY.md)
 
 ### Debug Commands
@@ -247,7 +247,7 @@ If you become knowledgeable about Symbolic MCP:
 
 ### Community
 
-- **GitHub Discussions**: [Community discussions](https://github.com/your-org/symbolic-mcp/discussions)
+- **GitHub Discussions**: [Community discussions](https://github.com/democratize-technology/symbolic-mcp/discussions)
 - **Discord/Slack**: [Join our community chat](https://discord.gg/symbolic-mcp)
 - **Twitter/X**: [@SymbolicMCP](https://twitter.com/SymbolicMCP)
 - **Blog**: [Symbolic MCP Blog](https://blog.symbolic-mcp.org)

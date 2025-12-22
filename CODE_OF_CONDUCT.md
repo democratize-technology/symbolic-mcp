@@ -5,7 +5,7 @@
 
 ## Our Pledge
 
-In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to make participation in our project and our community a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to make participation in our project and our community a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socioeconomic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
 
 ## Our Standards
 
@@ -75,8 +75,8 @@ If you experience or witness unacceptable behavior, please report it:
 - GitHub Issues: [Create a new issue with "Code of Conduct" in the title]
 
 **Alternative Contacts:**
-- Project Lead: [maintainer@example.com]
-- Community Manager: [community@example.com]
+- Project Lead: `maintainer@symbolic-mcp.org`
+- Community Manager: `community@symbolic-mcp.org`
 
 **What to Include in Your Report:**
 - Your contact information (optional)
@@ -151,7 +151,7 @@ Given our academic research connections:
 - **Research Ethics**: Maintain high standards of research integrity and ethics
 - **Attribution**: Properly cite academic contributions and collaborate appropriately
 - **Peer Review**: Provide constructive, professional feedback on research contributions
-- **Publication Policies**: Respect publication embargos and collaborative agreements
+- **Publication Policies**: Respect publication embargoes and collaborative agreements
 
 ### Industry Partnerships
 

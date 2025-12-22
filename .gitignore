@@ -494,3 +494,5 @@ threat_modeling/
 .flake8_cache/
 .pylint.d/
 .pytest_cache/
+# Claude Code internal artifacts
+.claude/

@@ -199,8 +199,8 @@
 ### Getting Help
 
 - **Documentation**: [Complete documentation](../README.md)
-- **Issues**: [GitHub Issues](https://github.com/your-org/symbolic-mcp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/symbolic-mcp/discussions)
+- **Issues**: [GitHub Issues](https://github.com/democratize-technology/symbolic-mcp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/democratize-technology/symbolic-mcp/discussions)
 - **Security**: [Security Policy](../SECURITY.md)
 
 ### Project Team

@@ -2,12 +2,12 @@
 # Copyright (c) 2025 Symbolic MCP Contributors
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "symbolic-mcp"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Production-ready symbolic execution server for the Model Context Protocol (MCP)"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -101,7 +101,11 @@ dev = [
     "pre-commit>=3.4.0,<4.0.0",
     "tox>=4.11.0,<5.0.0",
     "wheel>=0.41.0,<1.0.0",
-    "build>=1.0.0,<2.0.0"
+    "build>=1.0.0,<2.0.0",
+
+    # Version management
+    "setuptools-scm>=8.0.0",
+    "packaging>=23.0.0"
 ]
 
 # Production dependencies
@@ -130,13 +134,13 @@ experimental = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/symbolic-mcp"
+Homepage = "https://github.com/democratize-technology/symbolic-mcp"
 Documentation = "https://symbolic-mcp.readthedocs.io"
-Repository = "https://github.com/your-org/symbolic-mcp.git"
-"Bug Tracker" = "https://github.com/your-org/symbolic-mcp/issues"
-Changelog = "https://github.com/your-org/symbolic-mcp/blob/main/CHANGELOG.md"
-Discussions = "https://github.com/your-org/symbolic-mcp/discussions"
-Security = "https://github.com/your-org/symbolic-mcp/blob/main/SECURITY.md"
+Repository = "https://github.com/democratize-technology/symbolic-mcp.git"
+"Bug Tracker" = "https://github.com/democratize-technology/symbolic-mcp/issues"
+Changelog = "https://github.com/democratize-technology/symbolic-mcp/blob/main/CHANGELOG.md"
+Discussions = "https://github.com/democratize-technology/symbolic-mcp/discussions"
+Security = "https://github.com/democratize-technology/symbolic-mcp/blob/main/SECURITY.md"
 
 [project.scripts]
 symbolic-mcp = "main:main"
@@ -253,26 +257,8 @@ skips = [
     "B601"   # shell_injection_process (controlled usage)
 ]
 
-[tool.flake8]
-max-line-length = 88
-extend-ignore = [
-    "E203",  # whitespace before ':'
-    "W503"   # line break before binary operator
-]
-exclude = [
-    ".git",
-    "__pycache__",
-    "build",
-    "dist",
-    ".eggs",
-    "*.egg-info",
-    ".venv",
-    ".tox"
-]
-per-file-ignores = [
-    "__init__.py:F401",  # Imported but unused
-    "test_*.py:F401,F811"  # Test files may have unused imports and redefined functions
-]
+# Note: flake8 config is in pre-commit hook args, not pyproject.toml
+# flake8 7.x has limited pyproject.toml support
 
 [tool.tox]
 legacy_tox_ini = """
@@ -362,3 +348,14 @@ exclude = [
     "build/*",
     "dist/*"
 ]
+
+# === VERSION MANAGEMENT ===
+
+[tool.setuptools_scm]
+# Automatically calculate version from git tags
+write_to = "_version.py"
+version_scheme = "release-branch-semver"
+local_scheme = "node-and-date"
+fallback_version = "0.1.0"
+# Ensure semantic versioning with proper formatting
+tag_regex = "^v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9-]*)?)$"

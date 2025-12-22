@@ -3,7 +3,7 @@
 
 # Symbolic MCP Server
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/your-org/symbolic-mcp/actions)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/democratize-technology/symbolic-mcp/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastMCP 2.0](https://img.shields.io/badge/FastMCP-2.0+-blue.svg)](https://fastmcp.readthedocs.io/)
@@ -34,7 +34,7 @@ A secure, sandboxed symbolic execution engine built on the FastMCP 2.0 framework
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/symbolic-mcp.git
+git clone https://github.com/democratize-technology/symbolic-mcp.git
 cd symbolic-mcp
 
 # Create virtual environment
@@ -204,7 +204,7 @@ result = compare_functions(code, "find_max_slow", "find_max_fast")
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/symbolic-mcp.git
+git clone https://github.com/democratize-technology/symbolic-mcp.git
 cd symbolic-mcp
 
 # Set up development environment
@@ -392,8 +392,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-org/symbolic-mcp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/symbolic-mcp/discussions)
+- **Issues**: [GitHub Issues](https://github.com/democratize-technology/symbolic-mcp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/democratize-technology/symbolic-mcp/discussions)
 - **Security**: [Security Policy](SECURITY.md)
 
 ---

@@ -33,7 +33,7 @@ Thank you for your interest in contributing to the Symbolic MCP Server! This doc
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/symbolic-mcp.git
+git clone https://github.com/democratize-technology/symbolic-mcp.git
 cd symbolic-mcp
 
 # Create and activate virtual environment

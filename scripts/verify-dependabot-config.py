@@ -7,17 +7,19 @@ is properly set up and covers all dependency categories for the
 symbolic-mcp project.
 """
 
+import json
 import os
 import sys
-import yaml
-import json
 from pathlib import Path
 from typing import Dict, List, Set
+
+import yaml
+
 
 def load_yaml_file(file_path: Path) -> Dict:
     """Load and parse a YAML file."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             return yaml.safe_load(f)
     except FileNotFoundError:
         print(f"❌ File not found: {file_path}")
@@ -25,6 +27,7 @@ def load_yaml_file(file_path: Path) -> Dict:
     except yaml.YAMLError as e:
         print(f"❌ Error parsing {file_path}: {e}")
         sys.exit(1)
+
 
 def check_dependabot_config() -> Dict[str, any]:
     """Verify the main dependabot.yml configuration."""
@@ -76,8 +79,9 @@ def check_dependabot_config() -> Dict[str, any]:
         "valid": len(errors) == 0,
         "errors": errors,
         "warnings": warnings,
-        "ecosystems": list(ecosystems_found)
+        "ecosystems": list(ecosystems_found),
     }
+
 
 def check_workflow_files() -> Dict[str, any]:
     """Verify workflow files exist and have proper content."""
@@ -86,7 +90,7 @@ def check_workflow_files() -> Dict[str, any]:
     required_workflows = [
         ".github/workflows/dependabot-auto-merge.yml",
         ".github/workflows/dependency-security-monitoring.yml",
-        ".github/workflows/dependabot-pr-management.yml"
+        ".github/workflows/dependabot-pr-management.yml",
     ]
 
     errors = []
@@ -99,21 +103,27 @@ def check_workflow_files() -> Dict[str, any]:
 
             # Basic content checks
             try:
-                with open(path, 'r') as f:
+                with open(path, "r") as f:
                     content = f.read()
 
                 # Check for required keys
                 if workflow_path.endswith("auto-merge.yml"):
                     if "auto-merge" not in content:
-                        errors.append(f"Auto-merge workflow missing auto-merge functionality")
+                        errors.append(
+                            f"Auto-merge workflow missing auto-merge functionality"
+                        )
 
                 if workflow_path.endswith("security-monitoring.yml"):
                     if "security" not in content:
-                        errors.append(f"Security monitoring workflow missing security checks")
+                        errors.append(
+                            f"Security monitoring workflow missing security checks"
+                        )
 
                 if workflow_path.endswith("pr-management.yml"):
                     if "label" not in content:
-                        errors.append(f"PR management workflow missing labeling functionality")
+                        errors.append(
+                            f"PR management workflow missing labeling functionality"
+                        )
 
             except Exception as e:
                 errors.append(f"Error reading {workflow_path}: {e}")
@@ -123,8 +133,9 @@ def check_workflow_files() -> Dict[str, any]:
     return {
         "valid": len(errors) == 0,
         "errors": errors,
-        "present_workflows": present_workflows
+        "present_workflows": present_workflows,
     }
+
 
 def check_dependency_coverage() -> Dict[str, any]:
     """Verify coverage of all dependency categories."""
@@ -133,18 +144,18 @@ def check_dependency_coverage() -> Dict[str, any]:
     # Expected dependencies from requirements.txt and pyproject.toml
     expected_deps = {
         "core": {
-            "fastmcp", "crosshair-tool", "z3-solver", "icontract",
-            "RestrictedPython", "typing-extensions", "pydantic", "psutil"
+            "fastmcp",
+            "crosshair-tool",
+            "z3-solver",
+            "icontract",
+            "RestrictedPython",
+            "typing-extensions",
+            "pydantic",
+            "psutil",
         },
-        "dev": {
-            "pytest", "black", "flake8", "isort", "mypy", "bandit", "safety"
-        },
-        "prod": {
-            "structlog", "prometheus-client", "pydantic-settings"
-        },
-        "experimental": {
-            "angr", "scikit-learn", "numpy", "ray"
-        }
+        "dev": {"pytest", "black", "flake8", "isort", "mypy", "bandit", "safety"},
+        "prod": {"structlog", "prometheus-client", "pydantic-settings"},
+        "experimental": {"angr", "scikit-learn", "numpy", "ray"},
     }
 
     # Load dependabot config
@@ -174,8 +185,9 @@ def check_dependency_coverage() -> Dict[str, any]:
         "valid": len(errors) == 0,
         "errors": errors,
         "covered_dependencies": list(covered_deps),
-        "missing_dependencies": list(missing_deps)
+        "missing_dependencies": list(missing_deps),
     }
+
 
 def check_security_features() -> Dict[str, any]:
     """Verify security-focused features are properly configured."""
@@ -191,7 +203,7 @@ def check_security_features() -> Dict[str, any]:
         "daily_security_updates": False,
         "auto_merge_security": False,
         "version_constraints": False,
-        "grouped_updates": False
+        "grouped_updates": False,
     }
 
     for update in config.get("updates", []):
@@ -215,7 +227,7 @@ def check_security_features() -> Dict[str, any]:
     # Check workflow files for security features
     security_workflow = Path(".github/workflows/dependency-security-monitoring.yml")
     if security_workflow.exists():
-        with open(security_workflow, 'r') as f:
+        with open(security_workflow, "r") as f:
             content = f.read()
 
         if "safety" not in content:
@@ -236,8 +248,9 @@ def check_security_features() -> Dict[str, any]:
         "valid": len(errors) == 0,
         "errors": errors,
         "warnings": warnings,
-        "security_features": security_features
+        "security_features": security_features,
     }
+
 
 def check_documentation() -> Dict[str, any]:
     """Verify documentation is complete."""
@@ -254,14 +267,14 @@ def check_documentation() -> Dict[str, any]:
 
     # Check documentation content
     try:
-        with open(doc_path, 'r') as f:
+        with open(doc_path, "r") as f:
             content = f.read()
 
         required_sections = [
             "## Overview",
             "## Configuration Components",
             "## Security Features",
-            "## Integration with CI/CD"
+            "## Integration with CI/CD",
         ]
 
         missing_sections = []
@@ -282,11 +295,8 @@ def check_documentation() -> Dict[str, any]:
     except Exception as e:
         errors.append(f"Error reading documentation: {e}")
 
-    return {
-        "valid": len(errors) == 0,
-        "errors": errors,
-        "warnings": warnings
-    }
+    return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
+
 
 def main():
     """Main verification function."""
@@ -305,7 +315,7 @@ def main():
         "workflow_files": check_workflow_files(),
         "dependency_coverage": check_dependency_coverage(),
         "security_features": check_security_features(),
-        "documentation": check_documentation()
+        "documentation": check_documentation(),
     }
 
     # Print results
@@ -340,17 +350,24 @@ def main():
 
     # Coverage details
     if results["dependency_coverage"].get("covered_dependencies"):
-        print(f"Dependencies Covered: {len(results['dependency_coverage']['covered_dependencies'])}")
+        print(
+            f"Dependencies Covered: {len(results['dependency_coverage']['covered_dependencies'])}"
+        )
 
     if results["workflow_files"].get("present_workflows"):
-        print(f"Workflows Configured: {len(results['workflow_files']['present_workflows'])}")
+        print(
+            f"Workflows Configured: {len(results['workflow_files']['present_workflows'])}"
+        )
 
     if all_valid and total_errors == 0:
-        print("\n🎉 Dependabot configuration is properly set up and ready for production!")
+        print(
+            "\n🎉 Dependabot configuration is properly set up and ready for production!"
+        )
         sys.exit(0)
     else:
         print("\n⚠️  Please address the errors before deploying to production.")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

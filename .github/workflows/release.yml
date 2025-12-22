@@ -216,7 +216,7 @@ jobs:
 
             ### From Source
             ```bash
-            git clone https://github.com/your-org/symbolic-mcp.git
+            git clone https://github.com/democratize-technology/symbolic-mcp.git
             cd symbolic-mcp
             git checkout v${{ github.ref_name }}
             pip install -r requirements.txt
@@ -233,7 +233,7 @@ jobs:
 
             - [Documentation](https://symbolic-mcp.readthedocs.io/)
             - [API Reference](https://symbolic-mcp.readthedocs.io/api.html)
-            - [Examples](https://github.com/your-org/symbolic-mcp/tree/main/examples)
+            - [Examples](https://github.com/democratize-technology/symbolic-mcp/tree/main/examples)
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
