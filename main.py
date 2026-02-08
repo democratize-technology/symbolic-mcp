@@ -26,6 +26,7 @@ import contextlib
 import dataclasses
 import hashlib
 import importlib.util
+import logging
 import os
 import resource
 import signal
@@ -94,6 +95,9 @@ def set_memory_limit(limit_mb: int = 2048):
 
 
 set_memory_limit()
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # --- Section 3.3: Restricted Import Handler ---
 
@@ -475,13 +479,6 @@ class SecurityValidator:
         "compile",
         "__import__",
         "open",
-    }
-
-    # Dangerous AST node types (note: some deprecated nodes removed in Python 3.13)
-    DANGEROUS_AST_NODES = {
-        # ast.Module,  # Module nodes are expected
-        # ast.Exec,    # Removed in Python 3.13
-        # ast.Evaluate # Removed in Python 3.13
     }
 
     # File operations that should be blocked
@@ -1277,7 +1274,8 @@ def logic_analyze_branches(
         else:
             status = "partial"
 
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Symbolic analysis status detection failed: {e}")
         status = "partial"
 
     # Ensure all required schema fields are present
@@ -1343,11 +1341,6 @@ def calculate_cyclomatic_complexity(tree: ast.AST) -> int:
             operator_count = len(node.values) - 1
             complexity += operator_count
 
-            # Debug information for security analysis
-            if hasattr(node, "lineno"):
-                # This could be logged for security monitoring
-                pass
-
             self.generic_visit(node)
 
         def visit_IfExp(self, node):
@@ -1380,9 +1373,6 @@ def analyze_branch_reachability(
     if not branches:
         return [], dead_code_lines
 
-    # SECURITY FIX: Single SymbolicAnalyzer instance to prevent resource leaks
-    analyzer = None
-
     try:
         # Create only ONE SymbolicAnalyzer instance for all branches
         # Calculate timeout per branch to ensure total timeout is respected
@@ -1413,8 +1403,9 @@ def analyze_branch_reachability(
                         }
                     )
                     continue
-            except Exception:
+            except Exception as e:
                 # SECURITY: If validation fails, skip processing (fail safe)
+                logger.warning(f"Security validation failed for condition: {e}")
                 analyzed_branches.append(
                     {
                         "line": line,
@@ -1490,13 +1481,6 @@ def analyze_branch_reachability(
                 }
             )
 
-    finally:
-        # SECURITY FIX: Explicit cleanup of SymbolicAnalyzer instance
-        # This prevents memory leaks under load
-        if analyzer is not None:
-            # Explicit cleanup - remove references to help garbage collection
-            analyzer = None
-
     return analyzed_branches, dead_code_lines
 
 
@@ -1530,8 +1514,8 @@ def is_obviously_unsatisfiable(condition: str) -> bool:
                     if are_contradictory(part1, part2):
                         return True
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"is_obviously_unsatisfiable failed: {e}")
 
     return False
 
@@ -1549,8 +1533,8 @@ def is_obviously_always_true(condition: str) -> bool:
             if pattern.replace(" ", "") in normalized:
                 return True
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"is_obviously_always_true failed: {e}")
 
     return False
 
@@ -1574,8 +1558,8 @@ def are_contradictory(part1: str, part2: str) -> bool:
             if b in part1 and a in part2:
                 return True
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"are_contradictory failed: {e}")
 
     return False
 
@@ -1605,8 +1589,9 @@ def find_example_for_condition(condition: str, target_value: bool) -> Optional[D
             if pattern in condition_lower:
                 return None
 
-    except Exception:
+    except Exception as e:
         # SECURITY: If validation fails, return None (fail safe)
+        logger.warning(f"find_example_for_condition security validation failed: {e}")
         return None
 
     # SAFE example generation with whitelist approach
@@ -1665,8 +1650,8 @@ def find_example_for_condition(condition: str, target_value: bool) -> Optional[D
                 # Safe boolean literal
                 return {}
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"find_example_for_condition example generation failed: {e}")
 
     return None
 
@@ -1695,18 +1680,16 @@ def identify_dead_code(code: str, analyzed_branches: List[Dict]) -> List[int]:
                 # For if statements, else/elif bodies might be dead
                 pass  # Would need more sophisticated AST analysis
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"identify_dead_code failed: {e}")
 
     return sorted(list(set(dead_lines)))  # Remove duplicates
 
 
 # --- FastMCP 2.0 Lifespan Management ---
 
-from contextlib import asynccontextmanager
 
-
-@asynccontextmanager
+@contextlib.asynccontextmanager
 async def symbolic_execution_lifespan(app):
     """
     FastMCP 2.0 lifespan management pattern for proper resource cleanup.
@@ -2015,18 +1998,6 @@ def health_check() -> Dict[str, Any]:
         "system": system_info,
         "health": health_determination,
     }
-
-
-def main():
-    """Main entry point for the symbolic-mcp server."""
-    # Store server start time for uptime calculation
-    if "_server_start_time" not in globals():
-        import time
-
-        globals()["_server_start_time"] = time.time()
-
-    # FastMCP 2.0 standard startup - lifespan handled via mcp.lifespan property
-    mcp.run()
 
 
 # Store server start time for uptime calculation
