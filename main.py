@@ -1453,7 +1453,7 @@ def logic_analyze_branches(
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: Any) -> AsyncGenerator[dict[str, Any], None]:
+async def lifespan(app: object) -> AsyncGenerator[dict[str, Any], None]:
     """Manage server lifespan."""
     try:
         yield {}

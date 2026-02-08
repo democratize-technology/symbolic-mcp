@@ -10,9 +10,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
-def run_command(cmd, description, check=True):
+def run_command(cmd: str, description: str, check: bool = True) -> bool:
     """Run a command and handle errors"""
     print(f"🔧 {description}...")
     try:
@@ -33,7 +34,7 @@ def run_command(cmd, description, check=True):
         return False
 
 
-def setup_version_management():
+def setup_version_management() -> bool:
     """Setup version management components"""
     print("\n🏷️ Setting up version management...")
 
@@ -78,7 +79,7 @@ __fastmcp_compatibility__ = {
     return True
 
 
-def setup_pre_commit():
+def setup_pre_commit() -> bool:
     """Setup pre-commit hooks"""
     print("\n🪝 Setting up pre-commit hooks...")
 
@@ -94,7 +95,7 @@ def setup_pre_commit():
         return False
 
 
-def validate_configuration():
+def validate_configuration() -> bool:
     """Validate the current configuration"""
     print("\n✅ Validating configuration...")
 
@@ -148,7 +149,7 @@ def validate_configuration():
     return success
 
 
-def run_initial_tests():
+def run_initial_tests() -> bool:
     """Run initial tests to verify setup"""
     print("\n🧪 Running initial tests...")
 
@@ -170,7 +171,7 @@ def run_initial_tests():
     return passed == len(tests)
 
 
-def create_dev_environment():
+def create_dev_environment() -> bool:
     """Create development environment configuration"""
     print("\n🌍 Creating development environment...")
 
@@ -223,7 +224,7 @@ pre-commit>=3.4.0
     return True
 
 
-def main():
+def main() -> int:
     """Main setup function"""
     print("🚀 Symbolic MCP Development Setup")
     print("=" * 50)
