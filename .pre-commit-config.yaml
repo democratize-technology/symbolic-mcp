@@ -27,6 +27,7 @@ repos:
       - id: check-shebang-scripts-are-executable
       - id: detect-private-key
       - id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
 
       # Code quality
       - id: end-of-file-fixer
