@@ -22,15 +22,14 @@ SOFTWARE.
 """
 
 """
-Comprehensive Integration Test Suite for Symbolic Execution MCP Server
+Integration Test Suite for Symbolic Execution MCP Server
 
-Based on fuzzing-mcp patterns for production-ready testing of:
-- E2E MCP session lifecycle testing
-- Performance monitoring with psutil integration
-- Security validation of RestrictedImporter
-- Memory leak detection under load
-- CrossHair integration resilience testing
-- Production monitoring validation
+Tests for CrossHair symbolic execution integration:
+- Code validation and security checks
+- Symbolic analysis functionality
+- Branch analysis and path finding
+- Equivalence checking
+- CrossHair integration resilience
 """
 
 __version__ = "1.0.0"
