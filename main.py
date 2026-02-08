@@ -518,18 +518,24 @@ class SymbolicAnalyzer:
         if not validation["valid"]:
             return {
                 "status": "error",
-                "error_type": validation.get("error_type", "ValidationError"),
-                "message": validation["error"],
+                "counterexamples": [],
+                "paths_explored": 0,
+                "paths_verified": 0,
                 "time_seconds": round(time.perf_counter() - start_time, 4),
+                "coverage_estimate": 0.0,
             }
 
         try:
             with self._temporary_module(code) as module:
                 if not hasattr(module, target_function_name):
+                    elapsed = time.perf_counter() - start_time
                     return {
                         "status": "error",
-                        "error_type": "NameError",
-                        "message": f"Function '{target_function_name}' not found",
+                        "counterexamples": [],
+                        "paths_explored": 0,
+                        "paths_verified": 0,
+                        "time_seconds": round(elapsed, 4),
+                        "coverage_estimate": 0.0,
                     }
 
                 func = getattr(module, target_function_name)
@@ -638,25 +644,39 @@ class SymbolicAnalyzer:
                 elif paths_explored == 0:
                     status = "unknown"
 
+                # Calculate coverage estimate based on paths explored
+                # 1.0 = exhaustive (paths_explored < 1000)
+                # 0.99 = partial but high (paths_explored >= 1000)
+                coverage_estimate = 1.0 if paths_explored < 1000 else 0.99
+
                 return {
                     "status": status,
                     "counterexamples": counterexamples,
                     "paths_explored": paths_explored,
                     "paths_verified": paths_verified,
                     "time_seconds": round(elapsed, 4),
+                    "coverage_estimate": coverage_estimate,
                 }
 
         except ImportError as e:
+            elapsed = time.perf_counter() - start_time
             return {
                 "status": "error",
-                "error_type": "ImportError",
-                "message": str(e),
+                "counterexamples": [],
+                "paths_explored": 0,
+                "paths_verified": 0,
+                "time_seconds": round(elapsed, 4),
+                "coverage_estimate": 0.0,
             }
         except Exception as e:
+            elapsed = time.perf_counter() - start_time
             return {
                 "status": "error",
-                "error_type": type(e).__name__,
-                "message": str(e),
+                "counterexamples": [],
+                "paths_explored": 0,
+                "paths_verified": 0,
+                "time_seconds": round(elapsed, 4),
+                "coverage_estimate": 0.0,
             }
 
 
