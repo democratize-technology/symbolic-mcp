@@ -424,36 +424,58 @@ def validate_code(code: str) -> Dict[str, Any]:
 # --- Symbolic Analyzer ---
 
 
+# Module-level context manager for temporary module creation.
+# This is shared by SymbolicAnalyzer and the logic functions to ensure
+# consistent resource cleanup across all code paths.
+@contextlib.contextmanager
+def _temporary_module(code: str):
+    """Create a temporary module from code with guaranteed cleanup.
+
+    This context manager ensures that temporary files and sys.modules entries
+    are properly cleaned up even if exceptions occur during module loading.
+
+    Args:
+        code: Python source code to load as a module
+
+    Yields:
+        The loaded module object
+
+    Example:
+        with _temporary_module("def foo(): return 1") as module:
+            result = module.foo()
+        # File and module are cleaned up here, even if exception occurred
+    """
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w+", delete=False) as tmp:
+        tmp.write(textwrap.dedent(code))
+        tmp_path = tmp.name
+
+    module_name = f"mcp_temp_{os.path.basename(tmp_path)[:-3]}"
+
+    try:
+        spec = importlib.util.spec_from_file_location(module_name, tmp_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+            yield module
+    finally:
+        if module_name in sys.modules:
+            del sys.modules[module_name]
+        if os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError as e:
+                logger.debug(f"Failed to delete temporary file {tmp_path}: {e}")
+
+
 class SymbolicAnalyzer:
     """Analyzes code using CrossHair symbolic execution."""
 
     def __init__(self, timeout_seconds: int = 30):
         self.timeout = timeout_seconds
 
-    @contextlib.contextmanager
-    def _temporary_module(self, code: str):
-        """Create a temporary module from code."""
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w+", delete=False) as tmp:
-            tmp.write(textwrap.dedent(code))
-            tmp_path = tmp.name
-
-        module_name = f"mcp_temp_{os.path.basename(tmp_path)[:-3]}"
-
-        try:
-            spec = importlib.util.spec_from_file_location(module_name, tmp_path)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
-                yield module
-        finally:
-            if module_name in sys.modules:
-                del sys.modules[module_name]
-            if os.path.exists(tmp_path):
-                try:
-                    os.unlink(tmp_path)
-                except OSError as e:
-                    logger.debug(f"Failed to delete temporary file {tmp_path}: {e}")
+    # Use the module-level context manager for consistency
+    _temporary_module = staticmethod(_temporary_module)
 
     def analyze(self, code: str, target_function_name: str) -> Dict[str, Any]:
         """Analyze a function using symbolic execution."""
@@ -658,58 +680,47 @@ def logic_find_path_to_exception(
         }
 
     try:
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w+", delete=False) as tmp:
-            tmp.write(textwrap.dedent(code))
-            tmp_path = tmp.name
+        # Use the shared context manager for guaranteed cleanup
+        with _temporary_module(code) as module:
+            if not hasattr(module, function_name):
+                return {
+                    "status": "error",
+                    "error_type": "NameError",
+                    "message": f"Function '{function_name}' not found",
+                }
 
-        module_name = f"mcp_temp_{os.path.basename(tmp_path)[:-3]}"
+            # Get the function signature
+            func_sig = _extract_function_signature(module, function_name)
+            if func_sig is None:
+                func_sig = "(*args, **kwargs)"
 
-        try:
-            spec = importlib.util.spec_from_file_location(module_name, tmp_path)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
-
-                if not hasattr(module, function_name):
-                    return {
-                        "status": "error",
-                        "error_type": "NameError",
-                        "message": f"Function '{function_name}' not found",
-                    }
-
-                # Get the function signature
-                func_sig = _extract_function_signature(module, function_name)
-                if func_sig is None:
-                    func_sig = "(*args, **kwargs)"
-
-                # Create wrapper with explicit signature
-                # We use a simple postcondition so CrossHair analyzes the function
-                if not func_sig.startswith("(*"):
-                    # Extract parameter names
-                    sig = inspect.signature(getattr(module, function_name))
-                    param_names = list(sig.parameters.keys())
-                    if param_names:
-                        args_str = ", ".join(param_names)
-                        wrapper_code = f"""
+            # Create wrapper with explicit signature
+            # We use a simple postcondition so CrossHair analyzes the function
+            if not func_sig.startswith("(*"):
+                # Extract parameter names
+                sig = inspect.signature(getattr(module, function_name))
+                param_names = list(sig.parameters.keys())
+                if param_names:
+                    args_str = ", ".join(param_names)
+                    wrapper_code = f"""
 {code}
 
 def _exception_hunter_wrapper{func_sig}:
     '''post: True'''
     return {function_name}({args_str})
 """
-                    else:
-                        # Fallback for functions with no parameters
-                        wrapper_code = f"""
+                else:
+                    # Fallback for functions with no parameters
+                    wrapper_code = f"""
 {code}
 
 def _exception_hunter_wrapper{func_sig}:
     '''post: True'''
     return {function_name}()
 """
-                else:
-                    # Fallback for *args, **kwargs signature
-                    wrapper_code = f"""
+            else:
+                # Fallback for *args, **kwargs signature
+                wrapper_code = f"""
 {code}
 
 def _exception_hunter_wrapper{func_sig}:
@@ -717,14 +728,8 @@ def _exception_hunter_wrapper{func_sig}:
     return {function_name}(*args, **kwargs)
 """
 
-                analyzer = SymbolicAnalyzer(timeout_seconds)
-                result = analyzer.analyze(wrapper_code, "_exception_hunter_wrapper")
-
-        finally:
-            if module_name in sys.modules:
-                del sys.modules[module_name]
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            analyzer = SymbolicAnalyzer(timeout_seconds)
+            result = analyzer.analyze(wrapper_code, "_exception_hunter_wrapper")
 
     except Exception as e:
         return {
@@ -795,64 +800,53 @@ def logic_compare_functions(
         }
 
     try:
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w+", delete=False) as tmp:
-            tmp.write(textwrap.dedent(code))
-            tmp_path = tmp.name
+        # Use the shared context manager for guaranteed cleanup
+        with _temporary_module(code) as module:
+            if not hasattr(module, function_a):
+                return {
+                    "status": "error",
+                    "error_type": "NameError",
+                    "message": f"Function '{function_a}' not found",
+                }
 
-        module_name = f"mcp_temp_{os.path.basename(tmp_path)[:-3]}"
+            if not hasattr(module, function_b):
+                return {
+                    "status": "error",
+                    "error_type": "NameError",
+                    "message": f"Function '{function_b}' not found",
+                }
 
-        try:
-            spec = importlib.util.spec_from_file_location(module_name, tmp_path)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
+            # Get function signature for wrapper
+            func_sig = _extract_function_signature(module, function_a)
+            if func_sig is None:
+                func_sig = "(*args, **kwargs)"
 
-                if not hasattr(module, function_a):
-                    return {
-                        "status": "error",
-                        "error_type": "NameError",
-                        "message": f"Function '{function_a}' not found",
-                    }
-
-                if not hasattr(module, function_b):
-                    return {
-                        "status": "error",
-                        "error_type": "NameError",
-                        "message": f"Function '{function_b}' not found",
-                    }
-
-                # Get function signature for wrapper
-                func_sig = _extract_function_signature(module, function_a)
-                if func_sig is None:
-                    func_sig = "(*args, **kwargs)"
-
-                # Create wrapper with explicit signature using postcondition
-                if not func_sig.startswith("(*"):
-                    # Extract parameter names
-                    sig = inspect.signature(getattr(module, function_a))
-                    param_names = list(sig.parameters.keys())
-                    if param_names:
-                        args_str = ", ".join(param_names)
-                        wrapper_code = f"""
+            # Create wrapper with explicit signature using postcondition
+            if not func_sig.startswith("(*"):
+                # Extract parameter names
+                sig = inspect.signature(getattr(module, function_a))
+                param_names = list(sig.parameters.keys())
+                if param_names:
+                    args_str = ", ".join(param_names)
+                    wrapper_code = f"""
 {code}
 
 def _equivalence_check{func_sig}:
     '''post: {function_a}(_) == {function_b}(_)'''
     return {function_a}({args_str})
 """
-                    else:
-                        # Fallback for functions with no parameters
-                        wrapper_code = f"""
+                else:
+                    # Fallback for functions with no parameters
+                    wrapper_code = f"""
 {code}
 
 def _equivalence_check{func_sig}:
     '''post: {function_a}(_) == {function_b}(_)'''
     return {function_a}()
 """
-                else:
-                    # Fallback for *args, **kwargs signature
-                    wrapper_code = f"""
+            else:
+                # Fallback for *args, **kwargs signature
+                wrapper_code = f"""
 {code}
 
 def _equivalence_check{func_sig}:
@@ -860,14 +854,8 @@ def _equivalence_check{func_sig}:
     return {function_a}(*args, **kwargs)
 """
 
-                analyzer = SymbolicAnalyzer(timeout_seconds)
-                result = analyzer.analyze(wrapper_code, "_equivalence_check")
-
-        finally:
-            if module_name in sys.modules:
-                del sys.modules[module_name]
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            analyzer = SymbolicAnalyzer(timeout_seconds)
+            result = analyzer.analyze(wrapper_code, "_equivalence_check")
 
     except Exception as e:
         return {
