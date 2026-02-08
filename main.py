@@ -15,6 +15,7 @@ import resource
 import sys
 import tempfile
 import textwrap
+import threading
 import time
 import uuid
 from typing import Any, Dict, List, Optional
@@ -118,6 +119,13 @@ DANGEROUS_BUILTINS = frozenset(
 
 
 # --- Memory Management ---
+
+# Module-level lock for sys.modules access.
+# Protects against race conditions when multiple threads concurrently
+# create/delete temporary modules. Without this lock, check-then-act
+# patterns like "if key in dict: del dict[key]" can cause KeyError
+# when another thread modifies the dict between check and act.
+_SYS_MODULES_LOCK = threading.Lock()
 
 
 def set_memory_limit(limit_mb: int = 2048):
@@ -435,6 +443,10 @@ def _temporary_module(code: str):
     This context manager ensures that temporary files and sys.modules entries
     are properly cleaned up even if exceptions occur during module loading.
 
+    Thread Safety:
+        All sys.modules access is protected by _SYS_MODULES_LOCK to prevent
+        race conditions in concurrent execution scenarios.
+
     Args:
         code: Python source code to load as a module
 
@@ -458,12 +470,18 @@ def _temporary_module(code: str):
         spec = importlib.util.spec_from_file_location(module_name, tmp_path)
         if spec and spec.loader:
             module = importlib.util.module_from_spec(spec)
-            sys.modules[module_name] = module
+            # Lock required for sys.modules write to prevent race conditions
+            with _SYS_MODULES_LOCK:
+                sys.modules[module_name] = module
             spec.loader.exec_module(module)
             yield module
     finally:
-        if module_name in sys.modules:
-            del sys.modules[module_name]
+        # Lock required for sys.modules check-and-delete to prevent TOCTOU race
+        # Without lock: Thread A checks "key in dict" -> True, Thread B deletes key,
+        # Thread A tries to delete key -> KeyError. With lock: atomic check-and-delete.
+        with _SYS_MODULES_LOCK:
+            if module_name in sys.modules:
+                del sys.modules[module_name]
         if os.path.exists(tmp_path):
             try:
                 os.unlink(tmp_path)
@@ -1032,12 +1050,14 @@ async def lifespan(app):
         yield {}
     finally:
         # Clean up temporary modules
-        temp_modules = [
-            name for name in sys.modules.keys() if name.startswith("mcp_temp_")
-        ]
-        for module_name in temp_modules:
-            if module_name in sys.modules:
-                del sys.modules[module_name]
+        # Lock required to prevent race conditions with concurrent _temporary_module calls
+        with _SYS_MODULES_LOCK:
+            temp_modules = [
+                name for name in sys.modules.keys() if name.startswith("mcp_temp_")
+            ]
+            for module_name in temp_modules:
+                if module_name in sys.modules:
+                    del sys.modules[module_name]
 
 
 mcp = FastMCP("Symbolic Execution Server", lifespan=lifespan)
