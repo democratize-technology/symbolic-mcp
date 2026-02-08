@@ -1001,22 +1001,46 @@ def logic_analyze_branches(
                     }
                 )
 
-    # Calculate cyclomatic complexity
-    complexity = 1  # Base complexity
+    # Calculate cyclomatic complexity using a NodeVisitor
+    # This avoids double-counting elif branches that ast.walk() would cause
+    class ComplexityVisitor(ast.NodeVisitor):
+        """Count decision points for cyclomatic complexity."""
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.If):
-            complexity += 1
-            # Count elif branches
-            for orelse in node.orelse:
-                if isinstance(orelse, ast.If):
-                    complexity += 1
-        elif isinstance(node, ast.While):
-            complexity += 1
-        elif isinstance(node, ast.For):
-            complexity += 1
-        elif isinstance(node, ast.BoolOp):
-            complexity += len(node.values) - 1
+        def __init__(self) -> None:
+            self.complexity = 1  # Base complexity
+
+        def visit_If(self, node: ast.If) -> None:
+            """Visit an if statement and count it as one decision point.
+
+            Note: We only count the if itself here. Elif branches are separate
+            If nodes in the AST that will be visited separately by the visitor,
+            so we don't need to explicitly count them here.
+            """
+            self.complexity += 1
+            # Continue visiting child nodes to count nested structures
+            self.generic_visit(node)
+
+        def visit_While(self, node: ast.While) -> None:
+            """Visit a while loop and count it as one decision point."""
+            self.complexity += 1
+            self.generic_visit(node)
+
+        def visit_For(self, node: ast.For) -> None:
+            """Visit a for loop and count it as one decision point."""
+            self.complexity += 1
+            self.generic_visit(node)
+
+        def visit_BoolOp(self, node: ast.BoolOp) -> None:
+            """Visit a BoolOp (and/or) and count additional operands.
+
+            For 'a and b and c': 3 values -> +2 complexity
+            """
+            self.complexity += len(node.values) - 1
+            self.generic_visit(node)
+
+    visitor = ComplexityVisitor()
+    visitor.visit(tree)
+    complexity = visitor.complexity
 
     # If symbolic reachability is requested, perform deeper analysis
     dead_code_lines: List[int] = []
