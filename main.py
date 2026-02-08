@@ -1095,7 +1095,11 @@ async def lifespan(app):
                     del sys.modules[module_name]
 
 
-mcp = FastMCP("Symbolic Execution Server", lifespan=lifespan)
+mcp = FastMCP(
+    "Symbolic Execution Server",
+    lifespan=lifespan,
+    mask_error_details=True,  # Security: Hide internal error details from clients
+)
 
 
 @mcp.tool()
