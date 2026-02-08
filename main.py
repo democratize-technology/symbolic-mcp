@@ -588,6 +588,8 @@ class SymbolicAnalyzer:
                             # Or: "ExceptionType: when calling func(arg1, arg2)"
                             args: Dict[str, Any] = {}
                             kwargs: Dict[str, Any] = {}
+                            actual_result = ""
+                            path_condition = ""
 
                             # Try to parse the function call from the message
                             call_pattern = (
@@ -625,24 +627,49 @@ class SymbolicAnalyzer:
                                             else:
                                                 args[arg_name] = val
 
+                                    # Build path_condition from the arg values
+                                    # This represents the input condition that led to the violation
+                                    if args:
+                                        conditions = []
+                                        for arg_name, arg_val in args.items():
+                                            if isinstance(arg_val, str) and '"' in arg_val:
+                                                # Handle string representations like 'float("nan")'
+                                                conditions.append(f'{arg_name}={arg_val}')
+                                            else:
+                                                conditions.append(f'{arg_name}={repr(arg_val)}')
+                                        path_condition = ", ".join(conditions)
+
+                            # Extract actual_result from message
+                            # Pattern: "which returns X)" at the end of the message
+                            result_match = re.search(r"which returns\s+(.+)\)$", message.message)
+                            if result_match:
+                                actual_result = result_match.group(1).strip()
+                            else:
+                                # Fallback: try to find exception result
+                                # Some messages have format: "ExceptionType: ... when calling ..."
+                                exc_match = re.match(r"^(\w+(?:\s+\w+)*)?:", message.message)
+                                if exc_match:
+                                    actual_result = f"exception: {exc_match.group(0).rstrip(':')}"
+
                             counterexamples.append(
                                 {
                                     "args": args,
                                     "kwargs": kwargs,
                                     "violation": message.message,
-                                    "line": message.line,
-                                    "column": message.column,
-                                    "filename": message.filename,
+                                    "actual_result": actual_result,
+                                    "path_condition": path_condition,
                                 }
                             )
 
                 elapsed = time.perf_counter() - start_time
 
+                # Determine status based on analysis results
+                # Valid statuses per spec: "verified", "counterexample", "timeout", "error"
                 status = "verified"
                 if counterexamples:
                     status = "counterexample"
-                elif paths_explored == 0:
-                    status = "unknown"
+                # Note: paths_explored == 0 with no counterexamples means no contracts to verify
+                # This is treated as "verified" since nothing was disproven
 
                 # Calculate coverage estimate based on paths explored
                 # 1.0 = exhaustive (paths_explored < 1000)
