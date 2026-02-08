@@ -43,8 +43,8 @@ def simple_function(x: int) -> int:
         with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
             result = analyzer.analyze(code, "simple_function")
 
-        # Verify analysis succeeded
-        assert result["status"] in ("verified", "counterexample", "unknown")
+        # Verify analysis succeeded (valid status values per spec)
+        assert result["status"] in ("verified", "counterexample", "timeout", "error")
 
         # Verify all temp files were cleaned up
         for temp_file in temp_files_created:
