@@ -167,42 +167,6 @@ def sample_requests(test_code_samples):
     ]
 
 
-# Mock fixtures for testing
-@pytest.fixture
-def mock_security_validator():
-    from .mocks import MockSecurityValidator  # noqa: E402
-
-    return MockSecurityValidator()
-
-
-@pytest.fixture
-def mock_restricted_importer():
-    from .mocks import MockRestrictedImporter  # noqa: E402
-
-    return MockRestrictedImporter()
-
-
-@pytest.fixture
-def mock_symbolic_analyzer():
-    from .mocks import MockSymbolicAnalyzer  # noqa: E402
-
-    return MockSymbolicAnalyzer()
-
-
-@pytest.fixture
-def mock_memory_manager():
-    from .mocks import MockMemoryManager  # noqa: E402
-
-    return MockMemoryManager()
-
-
-@pytest.fixture
-def mock_process_isolation():
-    from .mocks import MockProcessIsolation  # noqa: E402
-
-    return MockProcessIsolation()
-
-
 # Performance baselines and expectations
 @pytest.fixture(scope="session")
 def performance_baselines():
