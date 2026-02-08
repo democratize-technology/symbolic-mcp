@@ -20,7 +20,7 @@ import threading
 import time
 import types
 import uuid
-from typing import Any, Generator, NotRequired, Optional, Union
+from typing import Any, AsyncGenerator, Generator, NotRequired, Optional, Union
 
 from crosshair.core import AnalysisOptionSet
 from crosshair.core_and_libs import (
@@ -35,7 +35,7 @@ from typing_extensions import TypedDict
 
 # Version information
 try:
-    from ._version import __version__
+    from ._version import __version__  # type: ignore[import-not-found]
 except ImportError:
     __version__ = "0.1.0"
 
@@ -65,6 +65,8 @@ class _SymbolicCheckResult(TypedDict):
     paths_verified: int
     time_seconds: float
     coverage_estimate: float
+    error_type: NotRequired[str]
+    message: NotRequired[str]
 
 
 class _ValidationResult(TypedDict):
@@ -80,8 +82,8 @@ class _ExceptionPathResult(TypedDict):
 
     status: str  # "found" | "unreachable" | "error"
     triggering_inputs: NotRequired[list[_Counterexample]]
-    paths_to_exception: int
-    total_paths_explored: int
+    paths_to_exception: NotRequired[int]
+    total_paths_explored: NotRequired[int]
     time_seconds: NotRequired[float]
     error_type: NotRequired[str]
     message: NotRequired[str]
@@ -92,7 +94,7 @@ class _FunctionComparisonResult(TypedDict):
 
     status: str  # "equivalent" | "different" | "error"
     distinguishing_input: NotRequired[Optional[_Counterexample]]
-    paths_compared: int
+    paths_compared: NotRequired[int]
     confidence: NotRequired[str]
     error_type: NotRequired[str]
     message: NotRequired[str]
@@ -113,13 +115,13 @@ class _BranchAnalysisResult(TypedDict):
     """Result of branch analysis."""
 
     status: str  # "complete" | "error"
-    branches: list[_BranchInfo]
-    total_branches: int
-    reachable_branches: int
-    dead_code_lines: list[int]
-    cyclomatic_complexity: int
-    time_seconds: float
-    analysis_mode: str  # "static" | "symbolic"
+    branches: NotRequired[list[_BranchInfo]]
+    total_branches: NotRequired[int]
+    reachable_branches: NotRequired[int]
+    dead_code_lines: NotRequired[list[int]]
+    cyclomatic_complexity: NotRequired[int]
+    time_seconds: NotRequired[float]
+    analysis_mode: NotRequired[str]  # "static" | "symbolic"
     error_type: NotRequired[str]
     message: NotRequired[str]
     line: NotRequired[int]
@@ -533,7 +535,7 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         # Also check nested attribute access like __builtins__.__dict__
         elif isinstance(node.value, ast.Attribute):
             # Walk down to find the root
-            root = node.value
+            root: ast.expr = node.value
             parts = [node.attr]
             while isinstance(root, ast.Attribute):
                 parts.append(root.attr)
@@ -563,10 +565,10 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         elif isinstance(node.value, (ast.BinOp, ast.BoolOp, ast.Compare)):
             # Check if __builtins__ appears in the expression using a visitor
             class _BuiltinsFinder(ast.NodeVisitor):
-                def __init__(self):
+                def __init__(self) -> None:
                     self.found = False
 
-                def visit_Name(self, n):
+                def visit_Name(self, n: ast.Name) -> None:
                     if n.id == "__builtins__":
                         self.found = True
                     # Don't continue traversal if found
@@ -626,7 +628,7 @@ class _DangerousCallVisitor(ast.NodeVisitor):
             elif isinstance(node.func.value, ast.Attribute):
                 # nested.module.dangerous_function()
                 # Walk up to find the root module
-                root = node.func.value
+                root: ast.expr = node.func.value
                 parts = [node.func.attr]
                 while isinstance(root, ast.Attribute):
                     parts.append(root.attr)
@@ -804,6 +806,8 @@ class SymbolicAnalyzer:
         # Validate code first
         validation = validate_code(code)
         if not validation["valid"]:
+            error_msg = validation.get("error", "Unknown validation error")
+            error_type_val = validation.get("error_type", "ValidationError")
             return {
                 "status": "error",
                 "counterexamples": [],
@@ -811,6 +815,8 @@ class SymbolicAnalyzer:
                 "paths_verified": 0,
                 "time_seconds": round(time.perf_counter() - start_time, 4),
                 "coverage_estimate": 0.0,
+                "error_type": error_type_val,
+                "message": error_msg,
             }
 
         try:
@@ -824,6 +830,8 @@ class SymbolicAnalyzer:
                         "paths_verified": 0,
                         "time_seconds": round(elapsed, 4),
                         "coverage_estimate": 0.0,
+                        "error_type": "NameError",
+                        "message": f"Function '{target_function_name}' not found",
                     }
 
                 func = getattr(module, target_function_name)
@@ -1011,6 +1019,8 @@ class SymbolicAnalyzer:
                 "paths_verified": 0,
                 "time_seconds": round(elapsed, 4),
                 "coverage_estimate": 0.0,
+                "error_type": "ImportError",
+                "message": str(e),
             }
         except Exception as e:
             elapsed = time.perf_counter() - start_time
@@ -1021,6 +1031,8 @@ class SymbolicAnalyzer:
                 "paths_verified": 0,
                 "time_seconds": round(elapsed, 4),
                 "coverage_estimate": 0.0,
+                "error_type": type(e).__name__,
+                "message": str(e),
             }
 
 
@@ -1155,25 +1167,15 @@ def _exception_hunter_wrapper{func_sig}:
 
     # Check if any counterexamples mention the target exception
     if result["status"] == "error":
-        # An error during analysis might be the target exception
-        if exception_type in result.get("message", ""):
-            return {
-                "status": "found",
-                "triggering_inputs": [
-                    {
-                        "args": {},
-                        "kwargs": {},
-                        "violation": result.get("message", ""),
-                        "line": result.get("line"),
-                        "column": 0,
-                        "filename": "",
-                    }
-                ],
-                "paths_to_exception": 1,
-                "total_paths_explored": result.get("paths_explored", 0),
-                "time_seconds": result.get("time_seconds", 0),
-            }
-        return result
+        # Can't return result directly - it's _SymbolicCheckResult, not _ExceptionPathResult
+        # Transfer error information if available
+        error_type_val = result.get("error_type", "AnalysisError")
+        error_msg = result.get("message", "Unknown error")
+        return {
+            "status": "error",
+            "error_type": error_type_val,
+            "message": error_msg,
+        }
 
     # Filter counterexamples for the target exception
     triggering_inputs = []
@@ -1198,7 +1200,13 @@ def _exception_hunter_wrapper{func_sig}:
             "total_paths_explored": result.get("paths_explored", 0),
         }
     else:
-        return result
+        # Can't return result directly - it's _SymbolicCheckResult, not _ExceptionPathResult
+        # This handles the "counterexample" case where no matching exception was found
+        return {
+            "status": "unreachable",
+            "paths_to_exception": 0,
+            "total_paths_explored": result.get("paths_explored", 0),
+        }
 
 
 def logic_compare_functions(
@@ -1294,7 +1302,13 @@ def _equivalence_check{func_sig}:
             "confidence": "proven",
         }
     else:
-        return result
+        # Can't return result directly - it's _SymbolicCheckResult, not _FunctionComparisonResult
+        # This handles error and timeout cases
+        return {
+            "status": "error",
+            "error_type": result["status"],
+            "message": "Analysis did not complete",
+        }
 
 
 def logic_analyze_branches(
@@ -1326,12 +1340,14 @@ def logic_analyze_branches(
     try:
         tree = ast.parse(textwrap.dedent(code))
     except SyntaxError as e:
-        return {
+        result: _BranchAnalysisResult = {
             "status": "error",
             "error_type": "SyntaxError",
             "message": str(e),
-            "line": e.lineno,
         }
+        if e.lineno is not None:
+            result["line"] = e.lineno
+        return result
 
     # Use a single-pass visitor to collect both branches and complexity
     # This avoids multiple O(n) AST traversals
@@ -1341,7 +1357,7 @@ def logic_analyze_branches(
         """Single-pass visitor that collects branches and calculates complexity."""
 
         def __init__(self, source_code: str, symbolic_reachability: bool) -> None:
-            self.branches = []
+            self.branches: list[_BranchInfo] = []
             self.complexity = 1  # Base complexity
             self.source_code = source_code
             self.symbolic_reachability = symbolic_reachability
@@ -1437,7 +1453,7 @@ def logic_analyze_branches(
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app):
+async def lifespan(app: Any) -> AsyncGenerator[dict[str, Any], None]:
     """Manage server lifespan."""
     try:
         yield {}
