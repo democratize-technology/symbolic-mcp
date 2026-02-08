@@ -525,11 +525,16 @@ class SymbolicAnalyzer:
                     messages: List[AnalysisMessage] = list(run_checkables(checkables))
 
                     # Get function signature for proper arg name mapping
-                    func_sig = (
-                        inspect.signature(func)
-                        if hasattr(inspect, "signature")
-                        else None
-                    )
+                    try:
+                        func_sig = (
+                            inspect.signature(func)
+                            if hasattr(inspect, "signature")
+                            else None
+                        )
+                    except ValueError:
+                        # inspect.signature() raises ValueError for builtin functions
+                        # and C extensions. Fall back to no signature info.
+                        func_sig = None
                     param_names = list(func_sig.parameters.keys()) if func_sig else []
 
                     for message in messages:
@@ -644,12 +649,23 @@ def _extract_function_signature(module, function_name: str) -> Optional[str]:
     """Extract the signature of a function for wrapper generation.
 
     Returns a string like '(x: int, y: int) -> int' or None if not found.
+
+    Note:
+        Returns None for builtin functions and C extensions that don't support
+        inspect.signature(), allowing callers to fall back to a generic
+        "(*args, **kwargs)" signature.
     """
     if not hasattr(module, function_name):
         return None
 
     func = getattr(module, function_name)
-    sig = inspect.signature(func)
+    try:
+        sig = inspect.signature(func)
+    except ValueError:
+        # inspect.signature() raises ValueError for builtin functions and
+        # C extensions that don't have signature metadata. Return None to
+        # trigger fallback to generic "(*args, **kwargs)" signature.
+        return None
 
     # Build parameter string with type hints
     params = []
