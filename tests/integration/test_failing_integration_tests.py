@@ -24,103 +24,140 @@ SOFTWARE.
 """
 Failing Integration Tests - Demonstrating Need for Integration Testing
 
-These tests demonstrate the current integration failures in the symbolic execution MCP server.
+These tests demonstrate the current integration failures in the symbolic execution MCP server.  # noqa: E501
 They are expected to fail initially and provide motivation for the comprehensive test suite.
 """
 
-import pytest
-import sys
-import os
-import time
-import asyncio
-from typing import Dict, Any, List
+import asyncio  # noqa: E402
+import os  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+from typing import Any, Dict, List  # noqa: E402
 
-# Import RequestExecutor abstraction and dependency container
-from .interfaces import SymbolicAnalyzerInterface
-from .dependency_container import create_test_container
+import pytest  # noqa: E402
 
-# Create dependency injection container for isolated testing
-_container = create_test_container(use_mocks=True)
-_symbolic_analyzer = _container.resolve(SymbolicAnalyzerInterface)
+# Import mock analyzer
+from .mocks import MockSymbolicAnalyzer  # noqa: E402
+
+# Create mock analyzer for testing
+_symbolic_analyzer = MockSymbolicAnalyzer()
+
 
 # Mock RequestExecutor for compatibility with legacy code
 class MockRequestExecutor:
     """Mock RequestExecutor that provides the same interface as main module functions"""
 
-    def __init__(self, symbolic_analyzer: SymbolicAnalyzerInterface):
-        self.symbolic_analyzer = symbolic_analyzer
+    def __init__(self):
+        from .mocks import MockSymbolicAnalyzer  # noqa: E402
 
-    def logic_symbolic_check(self, code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+        self.symbolic_analyzer = MockSymbolicAnalyzer()
+
+    def logic_symbolic_check(
+        self, code: str, function_name: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Execute symbolic check using injected analyzer"""
-        result = self.symbolic_analyzer.analyze_function(code, function_name, timeout_seconds)
+        result = self.symbolic_analyzer.analyze_function(
+            code, function_name, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
 
-    def logic_find_path_to_exception(self, code: str, function_name: str, exception_type: str, timeout_seconds: int) -> Dict[str, Any]:
+    def logic_find_path_to_exception(
+        self, code: str, function_name: str, exception_type: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Find exception paths using injected analyzer"""
-        result = self.symbolic_analyzer.find_exception_paths(code, function_name, exception_type, timeout_seconds)
+        result = self.symbolic_analyzer.find_exception_paths(
+            code, function_name, exception_type, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
 
-    def logic_compare_functions(self, code: str, function_a: str, function_b: str, timeout_seconds: int) -> Dict[str, Any]:
+    def logic_compare_functions(
+        self, code: str, function_a: str, function_b: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Compare functions using injected analyzer"""
-        result = self.symbolic_analyzer.compare_functions(code, function_a, function_b, timeout_seconds)
+        result = self.symbolic_analyzer.compare_functions(
+            code, function_a, function_b, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
 
-    def logic_analyze_branches(self, code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+    def logic_analyze_branches(
+        self, code: str, function_name: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Analyze branches using injected analyzer"""
-        result = self.symbolic_analyzer.analyze_branches(code, function_name, timeout_seconds)
+        result = self.symbolic_analyzer.analyze_branches(
+            code, function_name, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
+
 
 # Create global request executor instance
-_request_executor = MockRequestExecutor(_symbolic_analyzer)
+_request_executor = MockRequestExecutor()
+
 
 # Expose functions for compatibility with existing code
-def logic_symbolic_check(code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+def logic_symbolic_check(
+    code: str, function_name: str, timeout_seconds: int
+) -> Dict[str, Any]:
     return _request_executor.logic_symbolic_check(code, function_name, timeout_seconds)
 
-def logic_find_path_to_exception(code: str, function_name: str, exception_type: str, timeout_seconds: int) -> Dict[str, Any]:
-    return _request_executor.logic_find_path_to_exception(code, function_name, exception_type, timeout_seconds)
 
-def logic_compare_functions(code: str, function_a: str, function_b: str, timeout_seconds: int) -> Dict[str, Any]:
-    return _request_executor.logic_compare_functions(code, function_a, function_b, timeout_seconds)
+def logic_find_path_to_exception(
+    code: str, function_name: str, exception_type: str, timeout_seconds: int
+) -> Dict[str, Any]:
+    return _request_executor.logic_find_path_to_exception(
+        code, function_name, exception_type, timeout_seconds
+    )
 
-def logic_analyze_branches(code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
-    return _request_executor.logic_analyze_branches(code, function_name, timeout_seconds)
+
+def logic_compare_functions(
+    code: str, function_a: str, function_b: str, timeout_seconds: int
+) -> Dict[str, Any]:
+    return _request_executor.logic_compare_functions(
+        code, function_a, function_b, timeout_seconds
+    )
+
+
+def logic_analyze_branches(
+    code: str, function_name: str, timeout_seconds: int
+) -> Dict[str, Any]:
+    return _request_executor.logic_analyze_branches(
+        code, function_name, timeout_seconds
+    )
 
 
 class TestFailingIntegrationScenarios:
@@ -128,7 +165,7 @@ class TestFailingIntegrationScenarios:
 
     @pytest.mark.failing
     @pytest.mark.integration
-    def test_symbolic_check_returns_expected_status(self):
+    def test_symbolic_check_returns_expected_status(self):  # noqa: E501, C901
         """DEMONSTRATION: Symbolic check should return proper status, not 'unknown'"""
         # This test demonstrates the core issue: symbolic execution returns 'unknown' instead of proper results
 
@@ -140,21 +177,23 @@ def simple_function(x: int) -> int:
 """
 
         result = logic_symbolic_check(
-            code=code,
-            function_name="simple_function",
-            timeout_seconds=10
+            code=code, function_name="simple_function", timeout_seconds=10
         )
 
         # CURRENT BEHAVIOR (FAILING): Returns 'unknown' status
         # EXPECTED BEHAVIOR: Should return 'counterexample' with x=7
-        assert result["status"] == "counterexample", f"Expected 'counterexample', got '{result.get('status')}'"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected 'counterexample', got '{result.get('status')}'"
 
         # Should find the counterexample
         assert "counterexamples" in result, "Missing counterexamples in result"
         assert len(result["counterexamples"]) > 0, "No counterexamples found"
 
         counterexample = result["counterexamples"][0]
-        assert counterexample["args"]["x"] == 7, f"Expected x=7, got {counterexample.get('args', {})}"
+        assert (
+            counterexample["args"]["x"] == 7
+        ), f"Expected x=7, got {counterexample.get('args', {})}"
 
     @pytest.mark.failing
     @pytest.mark.integration
@@ -173,18 +212,22 @@ def unsafe_function(x: int) -> int:
             code=code,
             function_name="unsafe_function",
             exception_type="IndexError",
-            timeout_seconds=10
+            timeout_seconds=10,
         )
 
         # CURRENT BEHAVIOR (FAILING): Returns 'unknown' status
         # EXPECTED BEHAVIOR: Should return 'found' with triggering inputs
-        assert result["status"] == "found", f"Expected 'found', got '{result.get('status')}'"
+        assert (
+            result["status"] == "found"
+        ), f"Expected 'found', got '{result.get('status')}'"
 
         assert "triggering_inputs" in result, "Missing triggering inputs"
         assert len(result["triggering_inputs"]) > 0, "No triggering inputs found"
 
         trigger = result["triggering_inputs"][0]
-        assert trigger["args"]["x"] == 42, f"Expected x=42, got {trigger.get('args', {})}"
+        assert (
+            trigger["args"]["x"] == 42
+        ), f"Expected x=42, got {trigger.get('args', {})}"
 
     @pytest.mark.failing
     @pytest.mark.integration
@@ -204,12 +247,15 @@ def implementation_b(x: int) -> int:
             code=code,
             function_a="implementation_a",
             function_b="implementation_b",
-            timeout_seconds=10
+            timeout_seconds=10,
         )
 
         # CURRENT BEHAVIOR (FAILING): Returns 'unknown' status
         # EXPECTED BEHAVIOR: Should return 'equivalent' since both functions are the same
-        assert result["status"] in ["equivalent", "same"], f"Expected 'equivalent', got '{result.get('status')}'"
+        assert result["status"] in [  # noqa: E501
+            "equivalent",
+            "same",
+        ], f"Expected 'equivalent', got '{result.get('status')}'"
 
     @pytest.mark.failing
     @pytest.mark.integration
@@ -228,12 +274,14 @@ def safe_function(x: int) -> int:
             code=code,
             function_name="safe_function",
             exception_type="ValueError",
-            timeout_seconds=10
+            timeout_seconds=10,
         )
 
         # CURRENT BEHAVIOR (FAILING): Returns 'unknown' status
         # EXPECTED BEHAVIOR: Should return 'unreachable'
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got '{result.get('status')}'"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got '{result.get('status')}'"
 
     @pytest.mark.failing
     @pytest.mark.integration
@@ -252,14 +300,14 @@ def branching_function(x: int, y: int) -> int:
 """
 
         result = logic_analyze_branches(
-            code=code,
-            function_name="branching_function",
-            timeout_seconds=10
+            code=code, function_name="branching_function", timeout_seconds=10
         )
 
         # CURRENT BEHAVIOR (FAILING): Likely returns 'unknown' or incomplete analysis
         # EXPECTED BEHAVIOR: Should provide detailed branch coverage information
-        assert result["status"] != "unknown", f"Got 'unknown' status for branch analysis"
+        assert (
+            result["status"] != "unknown"
+        ), f"Got 'unknown' status for branch analysis"  # noqa: F541
         assert "branches" in result, "Missing branch analysis results"
         assert len(result["branches"]) > 0, "No branches analyzed"
 
@@ -281,11 +329,13 @@ def infinite_loop(x: int) -> int:
         # Execute multiple concurrent requests that should timeout
         tasks = []
         for i in range(5):
-            tasks.append(logic_symbolic_check(
-                code=timeout_code,
-                function_name=f"infinite_loop_{i}",
-                timeout_seconds=3  # Short timeout
-            ))
+            tasks.append(
+                logic_symbolic_check(
+                    code=timeout_code,
+                    function_name=f"infinite_loop_{i}",
+                    timeout_seconds=3,  # Short timeout
+                )
+            )
 
         # Current behavior: These may hang or take much longer than expected
         results = tasks  # In real async test, would use asyncio.gather
@@ -298,7 +348,10 @@ def infinite_loop(x: int) -> int:
 
         # All should timeout gracefully
         for i, result in enumerate(results):
-            assert result.get("status") in ["timeout", "error"], f"Request {i} should timeout or error"
+            assert result.get("status") in [
+                "timeout",
+                "error",
+            ], f"Request {i} should timeout or error"
 
     @pytest.mark.failing
     @pytest.mark.integration
@@ -317,7 +370,7 @@ def infinite_loop(x: int) -> int:
                 result = logic_symbolic_check(
                     code="def test_func(x: int) -> int: return x + 1",
                     function_name="test_func",
-                    timeout_seconds=5
+                    timeout_seconds=5,
                 )
                 # Should be able to handle this without issues
             except Exception:
@@ -341,7 +394,7 @@ def infinite_loop(x: int) -> int:
             broken_result = logic_symbolic_check(
                 code="def broken_syntax(x: int -> int: return x",  # Syntax error
                 function_name="broken_syntax",
-                timeout_seconds=5
+                timeout_seconds=5,
             )
         except Exception:
             pass  # Expected to fail
@@ -351,13 +404,17 @@ def infinite_loop(x: int) -> int:
             working_result = logic_symbolic_check(
                 code="def working_func(x: int) -> int: return x + 1",
                 function_name="working_func",
-                timeout_seconds=5
+                timeout_seconds=5,
             )
 
             # CURRENT BEHAVIOR (FAILING): May still be in an error state
             # EXPECTED BEHAVIOR: Should recover and work properly
-            assert working_result.get("status") != "error", "Failed to recover after syntax error"
-            assert working_result.get("status") != "unknown", "Got unknown status after recovery"
+            assert (
+                working_result.get("status") != "error"
+            ), "Failed to recover after syntax error"
+            assert (
+                working_result.get("status") != "unknown"
+            ), "Got unknown status after recovery"
 
         except Exception as e:
             pytest.fail(f"Failed to execute working function after error: {e}")
@@ -373,18 +430,18 @@ def infinite_loop(x: int) -> int:
             {
                 "code": "def func_a(x: int) -> int: return x + 1",
                 "function_name": "func_a",
-                "expected_min": 1  # Should at least not crash
+                "expected_min": 1,  # Should at least not crash
             },
             {
                 "code": "def func_b(x: int) -> int: return x * 2",
                 "function_name": "func_b",
-                "expected_min": 1
+                "expected_min": 1,
             },
             {
                 "code": "def func_c(x: int) -> int: return x - 1",
                 "function_name": "func_c",
-                "expected_min": 1
-            }
+                "expected_min": 1,
+            },
         ]
 
         # Execute all requests concurrently (simplified for this test)
@@ -394,7 +451,7 @@ def infinite_loop(x: int) -> int:
                 result = logic_symbolic_check(
                     code=req["code"],
                     function_name=req["function_name"],
-                    timeout_seconds=10
+                    timeout_seconds=10,
                 )
                 results.append((req["function_name"], result))
             except Exception as e:
@@ -405,8 +462,12 @@ def infinite_loop(x: int) -> int:
         assert len(results) == len(requests), "Not all requests completed"
 
         for func_name, result in results:
-            assert "error" not in result, f"Request {func_name} failed: {result.get('error', 'Unknown error')}"
-            assert result.get("status") != "error", f"Request {func_name} returned error status"
+            assert (
+                "error" not in result
+            ), f"Request {func_name} failed: {result.get('error', 'Unknown error')}"
+            assert (
+                result.get("status") != "error"
+            ), f"Request {func_name} returned error status"
 
     @pytest.mark.failing
     @pytest.mark.integration
@@ -424,14 +485,21 @@ def infinite_loop(x: int) -> int:
             # CURRENT BEHAVIOR (FAILING): Health check may not exist or be inaccurate
             # EXPECTED BEHAVIOR: Should provide accurate system health information
             assert "status" in health_status, "Health check missing status"
-            assert health_status["status"] in ["healthy", "degraded", "unhealthy"], "Invalid health status"
+            assert health_status["status"] in [
+                "healthy",
+                "degraded",
+                "unhealthy",
+            ], "Invalid health status"
 
             # Should include meaningful metrics
-            assert any(key in health_status for key in ["memory", "cpu", "active_requests"]), \
-                   "Health check missing basic metrics"
+            assert any(
+                key in health_status for key in ["memory", "cpu", "active_requests"]
+            ), "Health check missing basic metrics"
 
         except ImportError:
-            pytest.skip("No health_check function available - this is part of the integration issue")
+            pytest.skip(  # noqa: E501
+                "No health_check function available - this is part of the integration issue"
+            )
         except Exception as e:
             pytest.fail(f"Health check failed: {e}")
 
@@ -446,7 +514,10 @@ if __name__ == "__main__":
     test_methods = [
         ("symbolic_check", test_instance.test_symbolic_check_returns_expected_status),
         ("exception_path", test_instance.test_exception_path_finding_works),
-        ("function_comparison", test_instance.test_function_comparison_detects_differences),
+        (
+            "function_comparison",
+            test_instance.test_function_comparison_detects_differences,
+        ),
         ("unreachable_exception", test_instance.test_unreachable_exception_detection),
     ]
 
@@ -460,4 +531,6 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"💥 {test_name} ERROR: {e}")
 
-    print(f"\nFailing tests completed. These demonstrate the need for comprehensive integration testing.")
+    print(  # noqa: E501
+        "\nFailing tests completed. These demonstrate the need for comprehensive integration testing."
+    )

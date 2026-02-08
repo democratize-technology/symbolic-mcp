@@ -28,17 +28,17 @@ This script provides a command-line interface for running the integration test s
 with various options and reporting capabilities.
 """
 
-import sys
-import os
-import time
-import json
-import argparse
-import subprocess
-from pathlib import Path
-from typing import Dict, List, Any, Optional
+import argparse  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Any, Dict, List, Optional  # noqa: E402
 
 # Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
 class IntegrationTestRunner:
@@ -49,11 +49,13 @@ class IntegrationTestRunner:
         self.test_dir = Path(__file__).parent
         self.results = {}
 
-    def run_pytest(self,
-                   test_pattern: str = "tests/integration/",
-                   markers: Optional[List[str]] = None,
-                   extra_args: Optional[List[str]] = None,
-                   verbose: bool = True) -> Dict[str, Any]:
+    def run_pytest(
+        self,
+        test_pattern: str = "tests/integration/",
+        markers: Optional[List[str]] = None,
+        extra_args: Optional[List[str]] = None,
+        verbose: bool = True,
+    ) -> Dict[str, Any]:
         """Run pytest with specified options"""
 
         cmd = ["python", "-m", "pytest"]
@@ -83,13 +85,15 @@ class IntegrationTestRunner:
             start_time = time.time()
 
             # Activate virtual environment and run
-            activate_cmd = f"source {self.project_root}/venv/bin/activate && {' '.join(cmd)}"
+            activate_cmd = (
+                f"source {self.project_root}/venv/bin/activate && {' '.join(cmd)}"
+            )
             result = subprocess.run(
                 activate_cmd,
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             execution_time = time.time() - start_time
@@ -107,7 +111,7 @@ class IntegrationTestRunner:
                 "stdout": result.stdout,
                 "stderr": result.stderr,
                 "summary": summary,
-                "success": return_code == 0
+                "success": return_code == 0,
             }
 
         except subprocess.TimeoutExpired:
@@ -118,7 +122,7 @@ class IntegrationTestRunner:
                 "stdout": "",
                 "stderr": "Test execution timed out after 5 minutes",
                 "summary": {"status": "timeout"},
-                "success": False
+                "success": False,
             }
 
         except Exception as e:
@@ -129,18 +133,26 @@ class IntegrationTestRunner:
                 "stdout": "",
                 "stderr": str(e),
                 "summary": {"status": "error", "error": str(e)},
-                "success": False
+                "success": False,
             }
 
         finally:
             os.chdir(original_cwd)
 
-    def _parse_pytest_output(self, stdout: str, stderr: str) -> Dict[str, Any]:
+    def _parse_pytest_output(
+        self, stdout: str, stderr: str
+    ) -> Dict[str, Any]:  # noqa: C901
         """Parse pytest output to extract summary information"""
-        summary = {"status": "unknown", "passed": 0, "failed": 0, "skipped": 0, "errors": 0}
+        summary = {
+            "status": "unknown",
+            "passed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "errors": 0,
+        }
 
         # Look for the test summary line
-        lines = stdout.split('\n') + stderr.split('\n')
+        lines = stdout.split("\n") + stderr.split("\n")
         for line in lines:
             if "passed" in line and "failed" in line:
                 # Example: "5 passed, 2 failed, 1 skipped in 10.5s"
@@ -148,13 +160,13 @@ class IntegrationTestRunner:
                 try:
                     for i, part in enumerate(parts):
                         if part == "passed":
-                            summary["passed"] = int(parts[i-1])
+                            summary["passed"] = int(parts[i - 1])
                         elif part == "failed":
-                            summary["failed"] = int(parts[i-1])
+                            summary["failed"] = int(parts[i - 1])
                         elif part == "skipped":
-                            summary["skipped"] = int(parts[i-1])
+                            summary["skipped"] = int(parts[i - 1])
                         elif part == "error" or part == "errors":
-                            summary["errors"] = int(parts[i-1])
+                            summary["errors"] = int(parts[i - 1])
                 except (ValueError, IndexError):
                     pass
 
@@ -168,13 +180,15 @@ class IntegrationTestRunner:
 
         return summary
 
-    def run_all_tests(self, include_slow: bool = False, include_memory: bool = False) -> Dict[str, Any]:
+    def run_all_tests(
+        self, include_slow: bool = False, include_memory: bool = False
+    ) -> Dict[str, Any]:
         """Run all integration tests with different categories"""
 
         results = {
             "timestamp": time.time(),
             "test_categories": {},
-            "overall_summary": {"total": 0, "passed": 0, "failed": 0, "skipped": 0}
+            "overall_summary": {"total": 0, "passed": 0, "failed": 0, "skipped": 0},
         }
 
         # Test categories
@@ -184,40 +198,42 @@ class IntegrationTestRunner:
                 "description": "Basic integration tests",
                 "pattern": "tests/integration/test_e2e_harness.py",
                 "markers": ["integration"],
-                "expected": "Most should pass"
+                "expected": "Most should pass",
             },
             {
                 "name": "load_performance",
                 "description": "Load and performance tests",
                 "pattern": "tests/integration/test_load_harness.py",
                 "markers": ["load"],
-                "expected": "Most should pass"
+                "expected": "Most should pass",
             },
             {
                 "name": "security_validation",
                 "description": "Security validation tests",
                 "pattern": "tests/integration/test_security_harness.py",
                 "markers": ["security"],
-                "expected": "All should pass"
+                "expected": "All should pass",
             },
             {
                 "name": "resilience_testing",
                 "description": "Resilience and failure testing",
                 "pattern": "tests/integration/test_crosshair_failure_harness.py",
                 "markers": ["resilience"],
-                "expected": "Most should pass"
-            }
+                "expected": "Most should pass",
+            },
         ]
 
         # Optional categories
         if include_slow:
-            categories.append({
-                "name": "memory_leak_detection",
-                "description": "Memory leak detection tests",
-                "pattern": "tests/integration/test_memory_leak_detector.py",
-                "markers": ["memory"],
-                "expected": "All should pass"
-            })
+            categories.append(
+                {
+                    "name": "memory_leak_detection",
+                    "description": "Memory leak detection tests",
+                    "pattern": "tests/integration/test_memory_leak_detector.py",
+                    "markers": ["memory"],
+                    "expected": "All should pass",
+                }
+            )
 
         # Run each category
         for category in categories:
@@ -236,13 +252,13 @@ class IntegrationTestRunner:
                 test_pattern=category["pattern"],
                 markers=category["markers"],
                 extra_args=extra_args,
-                verbose=True
+                verbose=True,
             )
 
             results["test_categories"][category["name"]] = {
                 "description": category["description"],
                 "expected": category["expected"],
-                "result": result
+                "result": result,
             }
 
             # Update overall summary
@@ -265,17 +281,19 @@ class IntegrationTestRunner:
             test_pattern="tests/integration/test_failing_integration_tests.py",
             markers=["failing"],
             extra_args=["--tb=short"],
-            verbose=True
+            verbose=True,
         )
 
         return {
             "category": "failing_tests",
             "description": "Tests that demonstrate current integration issues",
             "expected": "All should fail (demonstrating issues)",
-            "result": result
+            "result": result,
         }
 
-    def generate_report(self, results: Dict[str, Any], output_file: Optional[str] = None) -> str:
+    def generate_report(
+        self, results: Dict[str, Any], output_file: Optional[str] = None
+    ) -> str:
         """Generate a comprehensive test report"""
 
         report = []
@@ -291,8 +309,8 @@ class IntegrationTestRunner:
         report.append(f"- Failed: {overall.get('failed', 0)}")
         report.append(f"- Skipped: {overall.get('skipped', 0)}")
 
-        if overall.get('total', 0) > 0:
-            pass_rate = (overall.get('passed', 0) / overall.get('total', 0)) * 100
+        if overall.get("total", 0) > 0:
+            pass_rate = (overall.get("passed", 0) / overall.get("total", 0)) * 100
             report.append(f"- Pass rate: {pass_rate:.1f}%")
         report.append("")
 
@@ -335,7 +353,7 @@ class IntegrationTestRunner:
         # Recommendations
         report.append("## Recommendations")
 
-        if overall.get('failed', 0) == 0:
+        if overall.get("failed", 0) == 0:
             report.append("✅ All tests passed - system is ready for production")
         else:
             report.append("⚠️  Some tests failed - review the following:")
@@ -349,7 +367,7 @@ class IntegrationTestRunner:
 
         # Save to file if requested
         if output_file:
-            with open(output_file, 'w') as f:
+            with open(output_file, "w") as f:
                 f.write(report_text)
             print(f"Report saved to: {output_file}")
 
@@ -364,7 +382,9 @@ class IntegrationTestRunner:
         overall = results.get("overall_summary", {})
         if overall.get("total", 0) > 0:
             pass_rate = (overall.get("passed", 0) / overall.get("total", 0)) * 100
-            print(f"Overall: {overall.get('passed', 0)}/{overall.get('total', 0)} passed ({pass_rate:.1f}%)")
+            print(  # noqa: E501
+                f"Overall: {overall.get('passed', 0)}/{overall.get('total', 0)} passed ({pass_rate:.1f}%)"
+            )
         else:
             print("No tests executed")
 
@@ -374,19 +394,33 @@ class IntegrationTestRunner:
                 result = category_data["result"]
                 summary = result["summary"]
                 status = "✅" if result["success"] else "❌"
-                print(f"{status} {category_data['description']}: {summary.get('status', 'unknown')}")
+                print(  # noqa: E501
+                    f"{status} {category_data['description']}: {summary.get('status', 'unknown')}"
+                )
 
         print(f"{'='*60}")
 
 
-def main():
+def main():  # noqa: C901
     """Main entry point for the test runner"""
-    parser = argparse.ArgumentParser(description="Run Symbolic Execution MCP Integration Tests")
-    parser.add_argument("--category", choices=["all", "basic", "load", "security", "resilience", "memory", "failing"],
-                       default="all", help="Test category to run")
-    parser.add_argument("--include-slow", action="store_true", help="Include slow tests")
-    parser.add_argument("--include-memory", action="store_true", help="Include memory-intensive tests")
-    parser.add_argument("--verbose", action="store_true", default=True, help="Verbose output")
+    parser = argparse.ArgumentParser(
+        description="Run Symbolic Execution MCP Integration Tests"
+    )
+    parser.add_argument(
+        "--category",
+        choices=["all", "basic", "load", "security", "resilience", "memory", "failing"],
+        default="all",
+        help="Test category to run",
+    )
+    parser.add_argument(
+        "--include-slow", action="store_true", help="Include slow tests"
+    )
+    parser.add_argument(
+        "--include-memory", action="store_true", help="Include memory-intensive tests"
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", default=True, help="Verbose output"
+    )
     parser.add_argument("--output", help="Output file for test report")
     parser.add_argument("--json", help="Output file for JSON results")
     parser.add_argument("--no-failing", action="store_true", help="Skip failing tests")
@@ -398,7 +432,9 @@ def main():
 
     try:
         if args.category == "all":
-            results = runner.run_all_tests(include_slow=args.include_slow, include_memory=args.include_memory)
+            results = runner.run_all_tests(
+                include_slow=args.include_slow, include_memory=args.include_memory
+            )
             if not args.no_failing:
                 failing_results = runner.run_failing_tests()
                 results["failing_tests"] = failing_results
@@ -411,9 +447,18 @@ def main():
             category_map = {
                 "basic": ("tests/integration/test_e2e_harness.py", ["integration"]),
                 "load": ("tests/integration/test_load_harness.py", ["load"]),
-                "security": ("tests/integration/test_security_harness.py", ["security"]),
-                "resilience": ("tests/integration/test_crosshair_failure_harness.py", ["resilience"]),
-                "memory": ("tests/integration/test_memory_leak_detector.py", ["memory"])
+                "security": (
+                    "tests/integration/test_security_harness.py",
+                    ["security"],
+                ),
+                "resilience": (
+                    "tests/integration/test_crosshair_failure_harness.py",
+                    ["resilience"],
+                ),
+                "memory": (
+                    "tests/integration/test_memory_leak_detector.py",
+                    ["memory"],
+                ),
             }
 
             if args.category in category_map:
@@ -428,17 +473,17 @@ def main():
                     test_pattern=pattern,
                     markers=markers,
                     extra_args=extra_args,
-                    verbose=args.verbose
+                    verbose=args.verbose,
                 )
 
                 results = {
                     "test_categories": {
                         args.category: {
                             "description": f"{args.category.title()} tests",
-                            "result": result
+                            "result": result,
                         }
                     },
-                    "overall_summary": result["summary"]
+                    "overall_summary": result["summary"],
                 }
 
         # Print results
@@ -452,7 +497,7 @@ def main():
 
         # Save JSON if requested
         if args.json:
-            with open(args.json, 'w') as f:
+            with open(args.json, "w") as f:
                 json.dump(results, f, indent=2, default=str)
             print(f"JSON results saved to: {args.json}")
 

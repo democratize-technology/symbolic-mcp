@@ -28,149 +28,194 @@ Based on fuzzing-mcp patterns for testing resilience under failure conditions.
 This harness tests timeout handling, Z3 solver exhaustion, and graceful degradation.
 """
 
-import pytest
-import time
-import threading
-import signal
-import subprocess
-import tempfile
-import os
-import sys
-import asyncio
-from typing import Dict, Any, List, Optional, Callable
-from dataclasses import dataclass, asdict
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
-import queue
+import asyncio  # noqa: E402
+import os  # noqa: E402
+import queue  # noqa: E402
+import signal  # noqa: E402
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+import tempfile  # noqa: E402
+import threading  # noqa: E402
+import time  # noqa: E402
+from concurrent.futures import ThreadPoolExecutor, TimeoutError  # noqa: E402
+from dataclasses import asdict, dataclass  # noqa: E402
+from typing import Any, Callable, Dict, List, Optional  # noqa: E402
 
-# Import RequestExecutor abstraction and dependency container
-from .interfaces import SymbolicAnalyzerInterface
-from .dependency_container import create_test_container
+import pytest  # noqa: E402
 
-# Create dependency injection container for isolated testing
-_container = create_test_container(use_mocks=True)
-_symbolic_analyzer = _container.resolve(SymbolicAnalyzerInterface)
+# Import mock analyzer
+from .mocks import MockSymbolicAnalyzer  # noqa: E402
+
+# Create mock analyzer for testing
+_symbolic_analyzer = MockSymbolicAnalyzer()
 
 # Check for CrossHair availability with graceful degradation
 try:
     import crosshair.core_and_libs
+
     CROSSHAIR_AVAILABLE = True
 except ImportError:
     CROSSHAIR_AVAILABLE = False
+
 
 # Mock CrossHair functionality for testing environments where CrossHair is unavailable
 class MockCrossHair:
     """Mock CrossHair implementation for testing without actual CrossHair dependency"""
 
     @staticmethod
-    def check_function(code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+    def check_function(
+        code: str, function_name: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Mock CrossHair function checking"""
         return {
-            'status': 'mock_complete',
-            'function_name': function_name,
-            'analysis_time': 0.1,
-            'results': [],
-            'postconditions': [],
-            'errors': [],
-            'exhausted': False
+            "status": "mock_complete",
+            "function_name": function_name,
+            "analysis_time": 0.1,
+            "results": [],
+            "postconditions": [],
+            "errors": [],
+            "exhausted": False,
         }
 
     @staticmethod
-    def analyze_paths(code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+    def analyze_paths(
+        code: str, function_name: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Mock CrossHair path analysis"""
         return {
-            'status': 'mock_complete',
-            'function_name': function_name,
-            'paths_found': 3,
-            'analysis_time': 0.1,
-            'exhausted': False
+            "status": "mock_complete",
+            "function_name": function_name,
+            "paths_found": 3,
+            "analysis_time": 0.1,
+            "exhausted": False,
         }
+
 
 # Create global crosshair instance (mock or real)
 _crosshair = MockCrossHair() if not CROSSHAIR_AVAILABLE else None
+
 
 # Mock RequestExecutor for compatibility with legacy code
 class MockRequestExecutor:
     """Mock RequestExecutor that provides the same interface as main module functions"""
 
-    def __init__(self, symbolic_analyzer: SymbolicAnalyzerInterface):
-        self.symbolic_analyzer = symbolic_analyzer
+    def __init__(self):
+        from .mocks import MockSymbolicAnalyzer  # noqa: E402
 
-    def logic_symbolic_check(self, code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+        self.symbolic_analyzer = MockSymbolicAnalyzer()
+
+    def logic_symbolic_check(
+        self, code: str, function_name: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Execute symbolic check using injected analyzer"""
-        result = self.symbolic_analyzer.analyze_function(code, function_name, timeout_seconds)
+        result = self.symbolic_analyzer.analyze_function(
+            code, function_name, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
 
-    def logic_find_path_to_exception(self, code: str, function_name: str, exception_type: str, timeout_seconds: int) -> Dict[str, Any]:
+    def logic_find_path_to_exception(
+        self, code: str, function_name: str, exception_type: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Find exception paths using injected analyzer"""
-        result = self.symbolic_analyzer.find_exception_paths(code, function_name, exception_type, timeout_seconds)
+        result = self.symbolic_analyzer.find_exception_paths(
+            code, function_name, exception_type, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
 
-    def logic_compare_functions(self, code: str, function_a: str, function_b: str, timeout_seconds: int) -> Dict[str, Any]:
+    def logic_compare_functions(
+        self, code: str, function_a: str, function_b: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Compare functions using injected analyzer"""
-        result = self.symbolic_analyzer.compare_functions(code, function_a, function_b, timeout_seconds)
+        result = self.symbolic_analyzer.compare_functions(
+            code, function_a, function_b, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
 
-    def logic_analyze_branches(self, code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+    def logic_analyze_branches(
+        self, code: str, function_name: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Analyze branches using injected analyzer"""
-        result = self.symbolic_analyzer.analyze_branches(code, function_name, timeout_seconds)
+        result = self.symbolic_analyzer.analyze_branches(
+            code, function_name, timeout_seconds
+        )
         return {
-            'status': result.status,
-            'function_name': result.function_name,
-            'analysis_time_seconds': result.analysis_time_seconds,
-            'findings': result.findings,
-            'paths_found': result.paths_found,
-            'counterexamples': result.counterexamples,
-            'errors': result.errors,
-            'metadata': result.metadata
+            "status": result.status,
+            "function_name": result.function_name,
+            "analysis_time_seconds": result.analysis_time_seconds,
+            "findings": result.findings,
+            "paths_found": result.paths_found,
+            "counterexamples": result.counterexamples,
+            "errors": result.errors,
+            "metadata": result.metadata,
         }
+
 
 # Create global request executor instance
-_request_executor = MockRequestExecutor(_symbolic_analyzer)
+_request_executor = MockRequestExecutor()
+
 
 # Expose functions for compatibility with existing code
-def logic_symbolic_check(code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
+def logic_symbolic_check(
+    code: str, function_name: str, timeout_seconds: int
+) -> Dict[str, Any]:
     return _request_executor.logic_symbolic_check(code, function_name, timeout_seconds)
 
-def logic_find_path_to_exception(code: str, function_name: str, exception_type: str, timeout_seconds: int) -> Dict[str, Any]:
-    return _request_executor.logic_find_path_to_exception(code, function_name, exception_type, timeout_seconds)
 
-def logic_compare_functions(code: str, function_a: str, function_b: str, timeout_seconds: int) -> Dict[str, Any]:
-    return _request_executor.logic_compare_functions(code, function_a, function_b, timeout_seconds)
+def logic_find_path_to_exception(
+    code: str, function_name: str, exception_type: str, timeout_seconds: int
+) -> Dict[str, Any]:
+    return _request_executor.logic_find_path_to_exception(
+        code, function_name, exception_type, timeout_seconds
+    )
 
-def logic_analyze_branches(code: str, function_name: str, timeout_seconds: int) -> Dict[str, Any]:
-    return _request_executor.logic_analyze_branches(code, function_name, timeout_seconds)
+
+def logic_compare_functions(
+    code: str, function_a: str, function_b: str, timeout_seconds: int
+) -> Dict[str, Any]:
+    return _request_executor.logic_compare_functions(
+        code, function_a, function_b, timeout_seconds
+    )
+
+
+def logic_analyze_branches(
+    code: str, function_name: str, timeout_seconds: int
+) -> Dict[str, Any]:
+    return _request_executor.logic_analyze_branches(
+        code, function_name, timeout_seconds
+    )
 
 
 @dataclass
 class FailureScenario:
     """Definition of a failure scenario test"""
+
     name: str
     description: str
     trigger_type: str  # "timeout", "exhaustion", "crash", "resource_limit"
@@ -182,6 +227,7 @@ class FailureScenario:
 @dataclass
 class FailureTestResult:
     """Result of a failure scenario test"""
+
     scenario_name: str
     test_passed: bool
     actual_behavior: str
@@ -194,6 +240,7 @@ class FailureTestResult:
 @dataclass
 class ResilienceReport:
     """Comprehensive resilience testing report"""
+
     test_name: str
     total_scenarios: int
     passed_scenarios: int
@@ -207,7 +254,7 @@ class CrossHairFailureTestHarness:
     """
     CrossHair integration failure scenario testing harness
 
-    Based on fuzzing-mcp patterns for testing resilience under various failure conditions.
+    Based on fuzzing-mcp patterns for testing resilience under various failure conditions.  # noqa: E501
     Tests timeout handling, solver exhaustion, and graceful degradation.
     """
 
@@ -220,12 +267,13 @@ class CrossHairFailureTestHarness:
         scenarios = []
 
         # 1. Timeout scenarios
-        scenarios.extend([
-            FailureScenario(
-                name="infinite_loop_timeout",
-                description="Test timeout handling with infinite loops",
-                trigger_type="timeout",
-                payload="""
+        scenarios.extend(
+            [
+                FailureScenario(
+                    name="infinite_loop_timeout",
+                    description="Test timeout handling with infinite loops",
+                    trigger_type="timeout",
+                    payload="""
 def infinite_loop(x: int) -> int:
     while True:
         x = x + 1
@@ -233,27 +281,27 @@ def infinite_loop(x: int) -> int:
             break
     return x
 """,
-                expected_behavior="timeout_graceful",
-                timeout_seconds=5
-            ),
-            FailureScenario(
-                name="deep_recursion_timeout",
-                description="Test timeout with deep recursion",
-                trigger_type="timeout",
-                payload="""
+                    expected_behavior="timeout_graceful",
+                    timeout_seconds=5,
+                ),
+                FailureScenario(
+                    name="deep_recursion_timeout",
+                    description="Test timeout with deep recursion",
+                    trigger_type="timeout",
+                    payload="""
 def deep_recursion(x: int) -> int:
     if x <= 0:
         return deep_recursion(x - 1)  # Infinite recursion
     return x
 """,
-                expected_behavior="timeout_graceful",
-                timeout_seconds=3
-            ),
-            FailureScenario(
-                name="combinatorial_explosion",
-                description="Test timeout with combinatorial explosion",
-                trigger_type="timeout",
-                payload="""
+                    expected_behavior="timeout_graceful",
+                    timeout_seconds=3,
+                ),
+                FailureScenario(
+                    name="combinatorial_explosion",
+                    description="Test timeout with combinatorial explosion",
+                    trigger_type="timeout",
+                    payload="""
 def combinatorial_explosion(arr: list) -> int:
     if not arr:
         return 0
@@ -265,18 +313,20 @@ def combinatorial_explosion(arr: list) -> int:
                 total += arr[j]
     return total
 """,
-                expected_behavior="timeout_graceful",
-                timeout_seconds=5
-            ),
-        ])
+                    expected_behavior="timeout_graceful",
+                    timeout_seconds=5,
+                ),
+            ]
+        )
 
         # 2. Z3 Solver exhaustion scenarios
-        scenarios.extend([
-            FailureScenario(
-                name="large_integer_constraints",
-                description="Test Z3 with large integer constraints",
-                trigger_type="exhaustion",
-                payload="""
+        scenarios.extend(
+            [
+                FailureScenario(
+                    name="large_integer_constraints",
+                    description="Test Z3 with large integer constraints",
+                    trigger_type="exhaustion",
+                    payload="""
 def large_integer_constraints(x: int) -> int:
     # Create many constraints that are hard for Z3
     constraints = [
@@ -300,14 +350,14 @@ def large_integer_constraints(x: int) -> int:
         return x * 2
     return x
 """,
-                expected_behavior="graceful_exhaustion",
-                timeout_seconds=10
-            ),
-            FailureScenario(
-                name="complex_string_constraints",
-                description="Test Z3 with complex string operations",
-                trigger_type="exhaustion",
-                payload="""
+                    expected_behavior="graceful_exhaustion",
+                    timeout_seconds=10,
+                ),
+                FailureScenario(
+                    name="complex_string_constraints",
+                    description="Test Z3 with complex string operations",
+                    trigger_type="exhaustion",
+                    payload="""
 def complex_string_constraints(s: str) -> str:
     # Complex string constraints
     constraints = [
@@ -325,14 +375,14 @@ def complex_string_constraints(s: str) -> str:
         return s + "_processed"
     return s
 """,
-                expected_behavior="graceful_exhaustion",
-                timeout_seconds=8
-            ),
-            FailureScenario(
-                name="array_index_constraints",
-                description="Test Z3 with complex array index constraints",
-                trigger_type="exhaustion",
-                payload="""
+                    expected_behavior="graceful_exhaustion",
+                    timeout_seconds=8,
+                ),
+                FailureScenario(
+                    name="array_index_constraints",
+                    description="Test Z3 with complex array index constraints",
+                    trigger_type="exhaustion",
+                    payload="""
 def complex_array_constraints(arr: list) -> int:
     n = len(arr)
     if n < 5:
@@ -353,18 +403,20 @@ def complex_array_constraints(arr: list) -> int:
         return sum(arr)
     return 0
 """,
-                expected_behavior="graceful_exhaustion",
-                timeout_seconds=10
-            ),
-        ])
+                    expected_behavior="graceful_exhaustion",
+                    timeout_seconds=10,
+                ),
+            ]
+        )
 
         # 3. Resource limit scenarios
-        scenarios.extend([
-            FailureScenario(
-                name="memory_pressure",
-                description="Test behavior under memory pressure",
-                trigger_type="resource_limit",
-                payload="""
+        scenarios.extend(
+            [
+                FailureScenario(
+                    name="memory_pressure",
+                    description="Test behavior under memory pressure",
+                    trigger_type="resource_limit",
+                    payload="""
 def memory_intensive(x: int) -> list:
     # Create large data structures
     big_data = []
@@ -376,14 +428,14 @@ def memory_intensive(x: int) -> list:
 
     return big_data[:x]
 """,
-                expected_behavior="resource_error_handling",
-                timeout_seconds=15
-            ),
-            FailureScenario(
-                name="computationally_expensive",
-                description="Test computationally expensive analysis",
-                trigger_type="resource_limit",
-                payload="""
+                    expected_behavior="resource_error_handling",
+                    timeout_seconds=15,
+                ),
+                FailureScenario(
+                    name="computationally_expensive",
+                    description="Test computationally expensive analysis",
+                    trigger_type="resource_limit",
+                    payload="""
 def expensive_computation(n: int) -> int:
     # Simulate expensive computation
     result = 0
@@ -393,48 +445,53 @@ def expensive_computation(n: int) -> int:
                 result += (i * j * k) % 1000
     return result
 """,
-                expected_behavior="timeout_or_resource_limit",
-                timeout_seconds=8
-            ),
-        ])
+                    expected_behavior="timeout_or_resource_limit",
+                    timeout_seconds=8,
+                ),
+            ]
+        )
 
         # 4. Error handling scenarios
-        scenarios.extend([
-            FailureScenario(
-                name="syntax_error_handling",
-                description="Test handling of syntax errors",
-                trigger_type="crash",
-                payload="def broken_syntax(x: int -> int: return x + 1",  # Syntax error
-                expected_behavior="graceful_error",
-                timeout_seconds=5
-            ),
-            FailureScenario(
-                name="type_error_handling",
-                description="Test handling of type errors",
-                trigger_type="crash",
-                payload="""
+        scenarios.extend(
+            [
+                FailureScenario(
+                    name="syntax_error_handling",
+                    description="Test handling of syntax errors",
+                    trigger_type="crash",
+                    payload="def broken_syntax(x: int -> int: return x + 1",  # noqa: E501 Syntax error
+                    expected_behavior="graceful_error",
+                    timeout_seconds=5,
+                ),
+                FailureScenario(
+                    name="type_error_handling",
+                    description="Test handling of type errors",
+                    trigger_type="crash",
+                    payload="""
 def type_error(x: str) -> int:
     return x + 1  # Type error
 """,
-                expected_behavior="graceful_error",
-                timeout_seconds=5
-            ),
-            FailureScenario(
-                name="name_error_handling",
-                description="Test handling of name errors",
-                trigger_type="crash",
-                payload="""
+                    expected_behavior="graceful_error",
+                    timeout_seconds=5,
+                ),
+                FailureScenario(
+                    name="name_error_handling",
+                    description="Test handling of name errors",
+                    trigger_type="crash",
+                    payload="""
 def name_error(x: int) -> int:
     return undefined_variable + x
 """,
-                expected_behavior="graceful_error",
-                timeout_seconds=5
-            ),
-        ])
+                    expected_behavior="graceful_error",
+                    timeout_seconds=5,
+                ),
+            ]
+        )
 
         return scenarios
 
-    def execute_failure_scenario(self, scenario: FailureScenario) -> FailureTestResult:
+    def execute_failure_scenario(
+        self, scenario: FailureScenario
+    ) -> FailureTestResult:  # noqa: C901
         """Execute a single failure scenario"""
         print(f"Testing failure scenario: {scenario.name}")
 
@@ -449,8 +506,7 @@ def name_error(x: int) -> int:
             # Execute with timeout
             if scenario.trigger_type in ["timeout", "exhaustion"]:
                 result = self._execute_with_timeout(
-                    scenario.payload,
-                    scenario.timeout_seconds
+                    scenario.payload, scenario.timeout_seconds
                 )
             else:
                 result = self._execute_with_error_handling(scenario.payload)
@@ -459,28 +515,41 @@ def name_error(x: int) -> int:
 
             # Analyze result
             if isinstance(result, dict):
-                status = result.get('status', 'unknown')
-                error = result.get('error', '')
+                status = result.get("status", "unknown")
+                error = result.get("error", "")
 
-                if status == 'timeout':
+                if status == "timeout":
                     actual_behavior = "timeout_handled"
                     graceful_degradation = True
-                    test_passed = scenario.expected_behavior in ["timeout_graceful", "timeout_or_resource_limit"]
+                    test_passed = scenario.expected_behavior in [
+                        "timeout_graceful",
+                        "timeout_or_resource_limit",
+                    ]
 
-                elif status == 'resource_exhausted':
+                elif status == "resource_exhausted":
                     actual_behavior = "exhaustion_handled"
                     graceful_degradation = True
-                    test_passed = scenario.expected_behavior in ["graceful_exhaustion", "timeout_or_resource_limit"]
+                    test_passed = scenario.expected_behavior in [
+                        "graceful_exhaustion",
+                        "timeout_or_resource_limit",
+                    ]
 
-                elif status == 'error':
+                elif status == "error":
                     actual_behavior = "error_handled"
                     graceful_degradation = True
-                    test_passed = scenario.expected_behavior in ["graceful_error", "timeout_or_resource_limit", "resource_error_handling"]
+                    test_passed = scenario.expected_behavior in [
+                        "graceful_error",
+                        "timeout_or_resource_limit",
+                        "resource_error_handling",
+                    ]
 
-                elif status == 'unknown':
+                elif status == "unknown":
                     actual_behavior = "unknown_status"
                     # Unknown status might be acceptable for some scenarios
-                    test_passed = scenario.expected_behavior in ["timeout_or_resource_limit", "graceful_exhaustion"]
+                    test_passed = scenario.expected_behavior in [
+                        "timeout_or_resource_limit",
+                        "graceful_exhaustion",
+                    ]
 
                 else:
                     actual_behavior = f"unexpected_status: {status}"
@@ -498,7 +567,10 @@ def name_error(x: int) -> int:
             execution_time = (time.time() - start_time) * 1000
             actual_behavior = "hard_timeout"
             graceful_degradation = True  # Hard timeout is still graceful
-            test_passed = scenario.expected_behavior in ["timeout_graceful", "timeout_or_resource_limit"]
+            test_passed = scenario.expected_behavior in [
+                "timeout_graceful",
+                "timeout_or_resource_limit",
+            ]
             error_message = "Hard timeout occurred"
 
         except Exception as e:
@@ -516,10 +588,12 @@ def name_error(x: int) -> int:
             execution_time_ms=execution_time,
             error_message=error_message,
             graceful_degradation=graceful_degradation,
-            resource_cleanup=resource_cleanup
+            resource_cleanup=resource_cleanup,
         )
 
-    def _execute_with_timeout(self, payload: str, timeout_seconds: int) -> Dict[str, Any]:
+    def _execute_with_timeout(
+        self, payload: str, timeout_seconds: int
+    ) -> Dict[str, Any]:
         """Execute payload with timeout protection"""
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(self._safe_execute, payload)
@@ -528,7 +602,10 @@ def name_error(x: int) -> int:
                 return result
             except TimeoutError:
                 future.cancel()
-                return {"status": "timeout", "error": f"Execution timed out after {timeout_seconds}s"}
+                return {
+                    "status": "timeout",
+                    "error": f"Execution timed out after {timeout_seconds}s",
+                }
 
     def _execute_with_error_handling(self, payload: str) -> Dict[str, Any]:
         """Execute payload with comprehensive error handling"""
@@ -541,7 +618,7 @@ def name_error(x: int) -> int:
             result = logic_symbolic_check(
                 code=payload,
                 function_name="test_function",
-                timeout_seconds=self.default_timeout
+                timeout_seconds=self.default_timeout,
             )
             return result
 
@@ -574,7 +651,9 @@ def name_error(x: int) -> int:
             results.append(result)
 
             if not result.test_passed:
-                print(f"❌ Failed scenario: {scenario.name} - Expected: {scenario.expected_behavior}, Got: {result.actual_behavior}")
+                print(  # noqa: E501
+                    f"❌ Failed scenario: {scenario.name} - Expected: {scenario.expected_behavior}, Got: {result.actual_behavior}"
+                )
             else:
                 print(f"✅ Passed scenario: {scenario.name}")
 
@@ -587,7 +666,9 @@ def name_error(x: int) -> int:
         critical_failures = []
         for result in results:
             if not result.test_passed and not result.graceful_degradation:
-                critical_failures.append(f"{result.scenario_name}: {result.actual_behavior}")
+                critical_failures.append(
+                    f"{result.scenario_name}: {result.actual_behavior}"
+                )
 
         report = ResilienceReport(
             test_name=test_name,
@@ -596,10 +677,12 @@ def name_error(x: int) -> int:
             failed_scenarios=failed_count,
             resilience_score=resilience_score,
             results=results,
-            critical_failures=critical_failures
+            critical_failures=critical_failures,
         )
 
-        print(f"Resilience test completed: {resilience_score:.2%} passed ({passed_count}/{len(scenarios)})")
+        print(  # noqa: E501
+            f"Resilience test completed: {resilience_score:.2%} passed ({passed_count}/{len(scenarios)})"
+        )
 
         return report
 
@@ -608,11 +691,11 @@ def name_error(x: int) -> int:
         print("Testing CrossHair availability...")
 
         crosshair_status = {
-            'available': CROSSHAIR_AVAILABLE,
-            'simple_analysis': False,
-            'complex_analysis': False,
-            'error_handling': False,
-            'timeout_handling': False
+            "available": CROSSHAIR_AVAILABLE,
+            "simple_analysis": False,
+            "complex_analysis": False,
+            "error_handling": False,
+            "timeout_handling": False,
         }
 
         if not CROSSHAIR_AVAILABLE:
@@ -626,14 +709,12 @@ def simple_test(x: int) -> int:
     return x + 1
 """
             result = logic_symbolic_check(
-                code=simple_code,
-                function_name="simple_test",
-                timeout_seconds=5
+                code=simple_code, function_name="simple_test", timeout_seconds=5
             )
-            crosshair_status['simple_analysis'] = 'status' in result
+            crosshair_status["simple_analysis"] = "status" in result
 
         except Exception:
-            crosshair_status['simple_analysis'] = False
+            crosshair_status["simple_analysis"] = False
 
         try:
             # Test timeout handling
@@ -645,29 +726,35 @@ def timeout_test(x: int) -> int:
 """
             start = time.time()
             result = logic_symbolic_check(
-                code=timeout_code,
-                function_name="timeout_test",
-                timeout_seconds=3
+                code=timeout_code, function_name="timeout_test", timeout_seconds=3
             )
             execution_time = time.time() - start
 
-            crosshair_status['timeout_handling'] = execution_time < 5  # Should return quickly
+            crosshair_status["timeout_handling"] = (
+                execution_time < 5
+            )  # Should return quickly
 
         except Exception:
-            crosshair_status['timeout_handling'] = False
+            crosshair_status["timeout_handling"] = False
 
         return crosshair_status
 
     def assert_resilience_requirements(self, report: ResilienceReport):
         """Assert resilience requirements are met"""
         # Critical resilience assertions
-        assert report.resilience_score >= 0.7, f"Resilience score too low: {report.resilience_score:.2%}"
-        assert len(report.critical_failures) == 0, f"Critical failures detected: {report.critical_failures}"
+        assert (
+            report.resilience_score >= 0.7
+        ), f"Resilience score too low: {report.resilience_score:.2%}"
+        assert (
+            len(report.critical_failures) == 0
+        ), f"Critical failures detected: {report.critical_failures}"
 
         # At least 80% of scenarios should show graceful degradation
         graceful_count = sum(1 for r in report.results if r.graceful_degradation)
         graceful_rate = graceful_count / len(report.results) if report.results else 0
-        assert graceful_rate >= 0.8, f"Graceful degradation rate too low: {graceful_rate:.2%}"
+        assert (
+            graceful_rate >= 0.8
+        ), f"Graceful degradation rate too low: {graceful_rate:.2%}"
 
         print(f"✅ Resilience requirements met for {report.test_name}")
 
@@ -682,22 +769,36 @@ def failure_harness():
 @pytest.mark.resilience
 def test_resilience_timeout_scenarios(failure_harness):
     """Test timeout handling scenarios"""
-    timeout_scenarios = [s for s in failure_harness.generate_failure_scenarios() if s.trigger_type == "timeout"]
+    timeout_scenarios = [
+        s
+        for s in failure_harness.generate_failure_scenarios()
+        if s.trigger_type == "timeout"
+    ]
 
     for scenario in timeout_scenarios:
         result = failure_harness.execute_failure_scenario(scenario)
-        assert result.graceful_degradation, f"Timeout scenario not handled gracefully: {scenario.name}"
-        assert result.execution_time_ms < (scenario.timeout_seconds + 5) * 1000, f"Timeout took too long: {result.execution_time_ms}ms"
+        assert (
+            result.graceful_degradation
+        ), f"Timeout scenario not handled gracefully: {scenario.name}"
+        assert (
+            result.execution_time_ms < (scenario.timeout_seconds + 5) * 1000
+        ), f"Timeout took too long: {result.execution_time_ms}ms"
 
 
 @pytest.mark.resilience
 def test_resilience_error_scenarios(failure_harness):
     """Test error handling scenarios"""
-    error_scenarios = [s for s in failure_harness.generate_failure_scenarios() if s.trigger_type == "crash"]
+    error_scenarios = [
+        s
+        for s in failure_harness.generate_failure_scenarios()
+        if s.trigger_type == "crash"
+    ]
 
     for scenario in error_scenarios:
         result = failure_harness.execute_failure_scenario(scenario)
-        assert result.test_passed, f"Error scenario not handled correctly: {scenario.name} - {result.error_message}"
+        assert (  # noqa: E501
+            result.test_passed
+        ), f"Error scenario not handled correctly: {scenario.name} - {result.error_message}"
 
 
 @pytest.mark.resilience
@@ -706,8 +807,8 @@ def test_resilience_crosshair_availability(failure_harness):
     crosshair_status = failure_harness.test_crosshair_availability()
 
     # Should handle both available and unavailable scenarios
-    assert 'available' in crosshair_status
-    assert isinstance(crosshair_status['available'], bool)
+    assert "available" in crosshair_status
+    assert isinstance(crosshair_status["available"], bool)
 
     print(f"CrossHair availability test: {crosshair_status}")
 
@@ -717,7 +818,9 @@ def test_resilience_crosshair_availability(failure_harness):
 def test_resilience_comprehensive_suite(failure_harness):
     """Test comprehensive resilience suite"""
     # Test a subset of scenarios for CI efficiency
-    scenarios = failure_harness.generate_failure_scenarios()[:5]  # Test first 5 scenarios
+    scenarios = failure_harness.generate_failure_scenarios()[
+        :5
+    ]  # Test first 5 scenarios
     results = []
 
     for scenario in scenarios:
@@ -728,7 +831,9 @@ def test_resilience_comprehensive_suite(failure_harness):
     passed_count = sum(1 for r in results if r.test_passed)
     pass_rate = passed_count / len(results)
 
-    assert pass_rate >= 0.6, f"Pass rate too low: {pass_rate:.2%}"  # Slightly lower for subset test
+    assert (
+        pass_rate >= 0.6
+    ), f"Pass rate too low: {pass_rate:.2%}"  # Slightly lower for subset test
 
     print(f"Comprehensive resilience test: {passed_count}/{len(results)} passed")
 
@@ -750,7 +855,7 @@ def resource_test(x: int) -> list:
     return temp_data[:x]
 """,
         expected_behavior="resource_error_handling",
-        timeout_seconds=5
+        timeout_seconds=5,
     )
 
     result = failure_harness.execute_failure_scenario(scenario)
@@ -769,10 +874,11 @@ if __name__ == "__main__":
         # Run resilience test suite
         report = harness.run_resilience_test_suite("standalone_resilience_test")
 
-        print(f"\nResilience Test Results:")
+        print(f"\nResilience Test Results:")  # noqa: F541
         print(json.dumps(asdict(report), indent=2, default=str))
 
         harness.assert_resilience_requirements(report)
 
     import json
+
     main()

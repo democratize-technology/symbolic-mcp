@@ -28,37 +28,31 @@ This file provides pytest configuration, markers, and shared fixtures
 for the comprehensive integration test suite.
 """
 
-import pytest
-import asyncio
-import sys
-import os
-import tempfile
-import shutil
-from typing import Generator, Dict, Any
+import asyncio  # noqa: E402
+import os  # noqa: E402
+import shutil  # noqa: E402
+import sys  # noqa: E402
+import tempfile  # noqa: E402
+from typing import Any, Dict, Generator  # noqa: E402
+
+import pytest  # noqa: E402
 
 # Add project root to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
 def pytest_configure(config):
     """Configure pytest with custom markers"""
-    config.addinivalue_line(
-        "markers", "integration: Mark test as integration test"
-    )
-    config.addinivalue_line(
-        "markers", "load: Mark test as load/performance test"
-    )
-    config.addinivalue_line(
-        "markers", "security: Mark test as security test"
-    )
-    config.addinivalue_line(
-        "markers", "memory: Mark test as memory leak test"
-    )
+    config.addinivalue_line("markers", "integration: Mark test as integration test")
+    config.addinivalue_line("markers", "load: Mark test as load/performance test")
+    config.addinivalue_line("markers", "security: Mark test as security test")
+    config.addinivalue_line("markers", "memory: Mark test as memory leak test")
     config.addinivalue_line(
         "markers", "resilience: Mark test as resilience/failure test"
     )
     config.addinivalue_line(
-        "markers", "failing: Mark test as expected to fail (demonstrates current issues)"
+        "markers",
+        "failing: Mark test as expected to fail (demonstrates current issues)",
     )
     config.addinivalue_line(
         "markers", "slow: Mark test as slow running (takes > 30 seconds)"
@@ -137,7 +131,7 @@ def recursive_function(n: int) -> int:
     if n <= 0:
         return 1
     return n * recursive_function(n - 1)
-"""
+""",
     }
 
 
@@ -149,28 +143,64 @@ def sample_requests(test_code_samples):
             "request_type": "symbolic_check",
             "code": test_code_samples["simple_function"],
             "function_name": "simple_function",
-            "timeout_seconds": 10
+            "timeout_seconds": 10,
         },
         {
             "request_type": "symbolic_check",
             "code": test_code_samples["conditional_function"],
             "function_name": "conditional_function",
-            "timeout_seconds": 10
+            "timeout_seconds": 10,
         },
         {
             "request_type": "find_path_to_exception",
             "code": test_code_samples["error_function"],
             "function_name": "error_function",
             "exception_type": "ValueError",
-            "timeout_seconds": 10
+            "timeout_seconds": 10,
         },
         {
             "request_type": "symbolic_check",
             "code": test_code_samples["complex_function"],
             "function_name": "complex_function",
-            "timeout_seconds": 15
-        }
+            "timeout_seconds": 15,
+        },
     ]
+
+
+# Mock fixtures for testing
+@pytest.fixture
+def mock_security_validator():
+    from .mocks import MockSecurityValidator  # noqa: E402
+
+    return MockSecurityValidator()
+
+
+@pytest.fixture
+def mock_restricted_importer():
+    from .mocks import MockRestrictedImporter  # noqa: E402
+
+    return MockRestrictedImporter()
+
+
+@pytest.fixture
+def mock_symbolic_analyzer():
+    from .mocks import MockSymbolicAnalyzer  # noqa: E402
+
+    return MockSymbolicAnalyzer()
+
+
+@pytest.fixture
+def mock_memory_manager():
+    from .mocks import MockMemoryManager  # noqa: E402
+
+    return MockMemoryManager()
+
+
+@pytest.fixture
+def mock_process_isolation():
+    from .mocks import MockProcessIsolation  # noqa: E402
+
+    return MockProcessIsolation()
 
 
 # Performance baselines and expectations
@@ -179,25 +209,25 @@ def performance_baselines():
     """Define performance baselines for testing"""
     return {
         "max_response_time_ms": {
-            "simple": 5000,      # 5 seconds for simple functions
-            "complex": 15000,    # 15 seconds for complex functions
-            "timeout": 30000     # 30 seconds for timeout scenarios
+            "simple": 5000,  # 5 seconds for simple functions
+            "complex": 15000,  # 15 seconds for complex functions
+            "timeout": 30000,  # 30 seconds for timeout scenarios
         },
         "min_requests_per_second": {
-            "light_load": 0.5,   # At least 0.5 req/s under light load
+            "light_load": 0.5,  # At least 0.5 req/s under light load
             "medium_load": 0.2,  # At least 0.2 req/s under medium load
-            "heavy_load": 0.1    # At least 0.1 req/s under heavy load
+            "heavy_load": 0.1,  # At least 0.1 req/s under heavy load
         },
         "memory_limits": {
-            "max_growth_mb": 100,      # Max 100MB growth during tests
-            "max_peak_mb": 500,        # Max 500MB peak usage
-            "leak_threshold_mb": 50    # Consider >50MB as potential leak
+            "max_growth_mb": 100,  # Max 100MB growth during tests
+            "max_peak_mb": 500,  # Max 500MB peak usage
+            "leak_threshold_mb": 50,  # Consider >50MB as potential leak
         },
         "security_expectations": {
-            "min_block_rate": 0.95,    # At least 95% of attacks should be blocked
-            "max_bypasses": 0,         # Zero security bypasses allowed
-            "response_time_ms": 1000   # Security checks should be fast
-        }
+            "min_block_rate": 0.95,  # At least 95% of attacks should be blocked
+            "max_bypasses": 0,  # Zero security bypasses allowed
+            "response_time_ms": 1000,  # Security checks should be fast
+        },
     }
 
 
@@ -205,36 +235,31 @@ def performance_baselines():
 @pytest.fixture(scope="session", autouse=True)
 def validate_test_environment():
     """Validate that the test environment is properly set up"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("SYMBOLIC EXECUTION MCP INTEGRATION TEST SUITE")
-    print("="*60)
+    print("=" * 60)
 
     # Check critical dependencies
     try:
         import psutil
+
         print(f"✅ psutil available: {psutil.__version__}")
     except ImportError:
-        pytest.skip("psutil not available - required for integration tests", allow_module_level=True)
-
-    # Check for dependency injection compatibility
-    try:
-        from .dependency_container import create_test_container
-        from .interfaces import SymbolicAnalyzerInterface
-        container = create_test_container(use_mocks=True)
-        analyzer = container.resolve(SymbolicAnalyzerInterface)
-        print("✅ Dependency injection container working")
-    except ImportError as e:
-        pytest.skip(f"Cannot import test dependencies: {e}", allow_module_level=True)
+        pytest.skip(
+            "psutil not available - required for integration tests",
+            allow_module_level=True,
+        )
 
     try:
         import crosshair
+
         print(f"✅ CrossHair available: {getattr(crosshair, '__version__', 'unknown')}")
     except ImportError:
         print("⚠️  CrossHair not available - testing graceful degradation")
 
     print(f"✅ Python version: {sys.version}")
-    print(f"✅ Test environment validated")
-    print("="*60 + "\n")
+    print(f"✅ Test environment validated")  # noqa: F541
+    print("=" * 60 + "\n")
 
 
 # Cleanup fixtures
@@ -246,17 +271,8 @@ def cleanup_test_state():
 
     # Post-test cleanup
     import gc
-    gc.collect()  # Force garbage collection
 
-    # Clear any caches if they exist
-    try:
-        from .dependency_container import get_container
-        container = get_container()
-        # If container has cleanup method, use it
-        if hasattr(container, 'clear'):
-            container.clear()
-    except (ImportError, AttributeError):
-        pass
+    gc.collect()  # Force garbage collection
 
 
 # Skip conditions
@@ -274,26 +290,23 @@ def pytest_runtest_setup(item):
 def pytest_addoption(parser):
     """Add custom command line options"""
     parser.addoption(
-        "--run-slow",
-        action="store_true",
-        default=False,
-        help="Run slow tests"
+        "--run-slow", action="store_true", default=False, help="Run slow tests"
     )
     parser.addoption(
         "--run-memory",
         action="store_true",
         default=False,
-        help="Run memory-intensive tests"
+        help="Run memory-intensive tests",
     )
     parser.addoption(
         "--performance-report",
         action="store_true",
         default=False,
-        help="Generate detailed performance report"
+        help="Generate detailed performance report",
     )
     parser.addoption(
         "--security-report",
         action="store_true",
         default=False,
-        help="Generate detailed security report"
+        help="Generate detailed security report",
     )

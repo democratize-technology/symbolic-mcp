@@ -25,43 +25,39 @@ SOFTWARE.
 Security Test Harness for Attack Scenario Testing of RestrictedImporter
 
 Based on fuzzing-mcp patterns for comprehensive security validation.
-This harness validates RestrictedImporter protection against sophisticated bypass attempts.
-
-REFACTORED: Now uses dependency injection and process isolation for secure testing.
+This harness validates RestrictedImporter protection against sophisticated bypass attempts.  # noqa: E501
 """
 
-import pytest
-import sys
-import os
-import subprocess
-import tempfile
-import time
-import threading
-import signal
-import json
-import base64
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass, asdict
-import ast
-import importlib.util
-from pathlib import Path
+import ast  # noqa: E402
+import base64  # noqa: E402
+import importlib.util  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import signal  # noqa: E402
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+import tempfile  # noqa: E402
+import threading  # noqa: E402
+import time  # noqa: E402
+from dataclasses import asdict, dataclass  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Any, Dict, List, Optional, Tuple  # noqa: E402
 
-# Import interfaces from centralized module to ensure DI compatibility
-from .interfaces import (
-    SecurityValidatorInterface,
-    RestrictedImporterInterface,
-    ProcessIsolationInterface,
+import pytest  # noqa: E402
+
+# Import mocks directly for testing
+from .mocks import (  # noqa: E402
     ImportResult,
     ImportSecurityLevel,
+    MockRestrictedImporter,
     MockSecurityValidator,
-    MockRestrictedImporter
 )
-from .dependency_container import create_test_container
 
 
 @dataclass
 class AttackResult:
     """Result of a security attack attempt"""
+
     attack_name: str
     attack_type: str
     payload: str
@@ -76,6 +72,7 @@ class AttackResult:
 @dataclass
 class SecurityTestSuite:
     """Comprehensive security test results"""
+
     test_name: str
     total_attacks: int
     blocked_attacks: int
@@ -168,7 +165,7 @@ def execute_attack_in_isolation(attack_payload: str, allowed_modules: list):
         def restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
             # CRITICAL: Block attempts to import project modules
             dangerous_patterns = ['symbolic_mcp', 'main', 'src', 'tests']
-            if any(pattern in name.lower() for pattern in dangerous_patterns):
+            if any(pattern in name.lower() for pattern in dangerous_patterns):  # noqa: E501
                 raise ImportError(f"Module '{name}' is not allowed in isolated environment")
 
             # Check if module is allowed
@@ -274,49 +271,54 @@ if __name__ == "__main__":
 '''
 
         # Write isolation script to temporary file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(script_content)
             return f.name
 
-    def execute_isolated_attack(self, attack_payload: str, allowed_modules: List[str]) -> Dict[str, Any]:
-        """Execute attack payload in completely isolated process with enhanced security"""
+    def execute_isolated_attack(
+        self, attack_payload: str, allowed_modules: List[str]
+    ) -> Dict[str, Any]:  # noqa: C901
+        """Execute attack payload in completely isolated process with enhanced security"""  # noqa: E501
         try:
             # Prepare attack data
             attack_data = {
                 "payload": attack_payload,
-                "allowed_modules": allowed_modules
+                "allowed_modules": allowed_modules,
             }
 
             # Enhanced security subprocess parameters
             env = os.environ.copy()
             # Remove potentially dangerous environment variables
-            env.pop('PYTHONPATH', None)
-            env.pop('PYTHONHOME', None)
-            env.pop('LD_LIBRARY_PATH', None)
-            env.pop('LD_PRELOAD', None)
+            env.pop("PYTHONPATH", None)
+            env.pop("PYTHONHOME", None)
+            env.pop("LD_LIBRARY_PATH", None)
+            env.pop("LD_PRELOAD", None)
 
             # Clear PATH to prevent system command execution
-            env['PATH'] = '/usr/bin:/bin'
+            env["PATH"] = "/usr/bin:/bin"
 
             # Execute in isolated process with enhanced security
             process = subprocess.Popen(
-                [sys.executable, '-S', self.isolation_script_path],  # -S disables site packages
+                [
+                    sys.executable,
+                    "-S",
+                    self.isolation_script_path,
+                ],  # -S disables site packages
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 env=env,
-                preexec_fn=self._secure_preexec if hasattr(os, 'setsid') else None,
+                preexec_fn=self._secure_preexec if hasattr(os, "setsid") else None,
                 # Security: Don't inherit file descriptors
                 close_fds=True,
                 # Security: Don't use shell
-                shell=False
+                shell=False,
             )
 
             try:
                 stdout, stderr = process.communicate(
-                    input=json.dumps(attack_data),
-                    timeout=self.timeout_seconds
+                    input=json.dumps(attack_data), timeout=self.timeout_seconds
                 )
 
                 # Parse result
@@ -328,20 +330,22 @@ if __name__ == "__main__":
                         "status": "protocol_error",
                         "message": "Could not parse isolation script output",
                         "stdout": stdout,
-                        "stderr": stderr
+                        "stderr": stderr,
                     }
 
                 # Add process metadata
                 result["process_metadata"] = {
                     "return_code": process.returncode,
-                    "execution_time": "timed_out" if process.returncode == -9 else "completed"
+                    "execution_time": (
+                        "timed_out" if process.returncode == -9 else "completed"
+                    ),
                 }
 
                 return result
 
             except subprocess.TimeoutExpired:
                 # Kill the entire process group
-                if hasattr(os, 'killpg'):
+                if hasattr(os, "killpg"):
                     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
                 else:
                     process.terminate()
@@ -350,20 +354,20 @@ if __name__ == "__main__":
                 try:
                     process.wait(timeout=1)
                 except subprocess.TimeoutExpired:
-                    if hasattr(os, 'killpg'):
+                    if hasattr(os, "killpg"):
                         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                     else:
                         process.kill()
 
-                return {
+                return {  # noqa: E501
                     "success": False,
                     "status": "timeout",
                     "message": f"Attack payload timed out after {self.timeout_seconds} seconds",
                     "suspicious_activity": True,
                     "process_metadata": {
                         "return_code": -9,
-                        "execution_time": "timed_out"
-                    }
+                        "execution_time": "timed_out",
+                    },
                 }
 
         except Exception as e:
@@ -371,7 +375,7 @@ if __name__ == "__main__":
                 "success": False,
                 "status": "isolation_error",
                 "message": f"Process isolation failed: {str(e)}",
-                "suspicious_activity": True
+                "suspicious_activity": True,
             }
 
     def _secure_preexec(self):
@@ -387,7 +391,8 @@ if __name__ == "__main__":
             # Try to drop to nobody user - this will fail in most test environments
             try:
                 import pwd
-                nobody = pwd.getpwnam('nobody')
+
+                nobody = pwd.getpwnam("nobody")
                 os.setgid(nobody.pw_gid)
                 os.setuid(nobody.pw_uid)
             except:
@@ -406,27 +411,26 @@ class SecurityTestHarness:
     """
     Comprehensive security testing harness for RestrictedImporter
 
-    ARCHITECTURAL IMPROVEMENTS:
-    - Uses dependency injection for security components
-    - Implements process isolation for attack execution
-    - Eliminates direct main module coupling
-    - Provides mock implementations for testing
-
     Based on fuzzing-mcp patterns for adversarial testing.
     Tests sophisticated bypass attempts and validates security controls.
     """
 
-    def __init__(self, use_process_isolation: bool = True, container=None):
-        self.container = container or create_test_container()
-        self.security_validator: SecurityValidatorInterface = self.container.resolve(SecurityValidatorInterface)
-        self.restricted_importer: RestrictedImporterInterface = self.container.resolve(RestrictedImporterInterface)
+    def __init__(
+        self,
+        use_process_isolation: bool = True,
+        security_validator=None,
+        restricted_importer=None,
+    ):
+        self.security_validator = security_validator or MockSecurityValidator()
+        self.restricted_importer = restricted_importer or MockRestrictedImporter(
+            self.security_validator
+        )
         self.use_process_isolation = use_process_isolation
 
         if use_process_isolation:
             self.process_isolation = IsolatedProcessSecurityTest()
 
         self.original_modules = set(sys.modules.keys())
-        # Use centralized mock validator from interfaces module
         self.allowed_modules = self.security_validator.get_allowed_modules()
 
     def get_sys_modules_count(self) -> int:
@@ -437,16 +441,34 @@ class SecurityTestHarness:
         """Identify potentially dangerous modules that were imported"""
         suspicious = []
         dangerous_patterns = [
-            'os', 'subprocess', 'sys', 'importlib', 'types', 'builtins',
-            'socket', 'urllib', 'http', 'ftplib', 'smtplib',
-            'threading', 'multiprocessing', 'ctypes', 'pickle',
-            'marshal', 'code', 'compile', 'execfile', '__import__'
+            "os",
+            "subprocess",
+            "sys",
+            "importlib",
+            "types",
+            "builtins",
+            "socket",
+            "urllib",
+            "http",
+            "ftplib",
+            "smtplib",
+            "threading",
+            "multiprocessing",
+            "ctypes",
+            "pickle",
+            "marshal",
+            "code",
+            "compile",
+            "execfile",
+            "__import__",
         ]
 
         for module_name in sys.modules:
             if module_name not in self.original_modules:
                 # Check if this is a potentially dangerous module
-                if any(pattern in module_name.lower() for pattern in dangerous_patterns):
+                if any(
+                    pattern in module_name.lower() for pattern in dangerous_patterns
+                ):
                     suspicious.append(module_name)
 
         return suspicious
@@ -455,10 +477,8 @@ class SecurityTestHarness:
         """
         Execute a single attack attempt with process isolation or direct execution.
 
-        ARCHITECTURAL IMPROVEMENT:
-        - Uses process isolation for secure attack execution
-        - Falls back to direct execution with dependency injection
-        - Eliminates direct main module coupling
+        Uses process isolation for secure attack execution.
+        Falls back to direct execution with mock dependencies.
         """
         start_time = time.time()
         modules_before = self.get_sys_modules_count()
@@ -485,12 +505,14 @@ class SecurityTestHarness:
                     execution_time_ms=execution_time,
                     sys_modules_before=modules_before,
                     sys_modules_after=modules_after,
-                    suspicious_modules=suspicious
+                    suspicious_modules=suspicious,
                 )
 
             else:
                 # Direct execution with dependency injection (less secure)
-                return self._execute_attack_direct(attack_payload, attack_name, start_time, modules_before)
+                return self._execute_attack_direct(
+                    attack_payload, attack_name, start_time, modules_before
+                )
 
         except Exception as e:
             execution_time = (time.time() - start_time) * 1000
@@ -506,11 +528,17 @@ class SecurityTestHarness:
                 execution_time_ms=execution_time,
                 sys_modules_before=modules_before,
                 sys_modules_after=modules_after,
-                suspicious_modules=suspicious
+                suspicious_modules=suspicious,
             )
 
-    def _execute_attack_direct(self, attack_payload: str, attack_name: str, start_time: float, modules_before: int) -> AttackResult:
-        """Execute attack directly using dependency injection (fallback method)"""
+    def _execute_attack_direct(
+        self,
+        attack_payload: str,
+        attack_name: str,
+        start_time: float,
+        modules_before: int,
+    ) -> AttackResult:
+        """Execute attack directly using mock dependencies (fallback method)"""
         try:
             # Validate import access using injected dependency
             import_statements = self._extract_import_statements(attack_payload)
@@ -518,7 +546,9 @@ class SecurityTestHarness:
 
             for import_stmt in import_statements:
                 module_name = self._extract_module_name(import_stmt)
-                if module_name and not self.security_validator.is_module_allowed(module_name):
+                if module_name and not self.security_validator.is_module_allowed(
+                    module_name
+                ):
                     blocked_imports.append(module_name)
 
             if blocked_imports:
@@ -532,11 +562,11 @@ class SecurityTestHarness:
                     execution_time_ms=execution_time,
                     sys_modules_before=modules_before,
                     sys_modules_after=modules_before,
-                    suspicious_modules=[]
+                    suspicious_modules=[],
                 )
 
             # Try to execute the attack with restricted importer
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
                 f.write(attack_payload)
                 f.flush()
 
@@ -544,7 +574,9 @@ class SecurityTestHarness:
                     spec = importlib.util.spec_from_file_location("attack_code", f.name)
                     if spec and spec.loader:
                         # Create restricted environment
-                        restricted_importer = self.restricted_importer.create_restricted_importer()
+                        restricted_importer = (
+                            self.restricted_importer.create_restricted_importer()
+                        )
 
                         # This should trigger the RestrictedImporter (if available)
                         module = importlib.util.module_from_spec(spec)
@@ -555,7 +587,7 @@ class SecurityTestHarness:
                         modules_after = self.get_sys_modules_count()
                         suspicious = self.get_suspicious_modules()
 
-                        return AttackResult(
+                        return AttackResult(  # noqa: E501
                             attack_name=attack_name,
                             attack_type="bypass_attempt",
                             payload=attack_payload,
@@ -564,7 +596,7 @@ class SecurityTestHarness:
                             execution_time_ms=execution_time,
                             sys_modules_before=modules_before,
                             sys_modules_after=modules_after,
-                            suspicious_modules=suspicious
+                            suspicious_modules=suspicious,
                         )
 
                 except Exception as e:
@@ -574,8 +606,16 @@ class SecurityTestHarness:
 
                     # Check if the error is due to our security controls
                     error_msg = str(e).lower()
-                    security_keywords = ['restricted', 'not allowed', 'blocked', 'forbidden', 'permission']
-                    is_blocked = any(keyword in error_msg for keyword in security_keywords)
+                    security_keywords = [
+                        "restricted",
+                        "not allowed",
+                        "blocked",
+                        "forbidden",
+                        "permission",
+                    ]
+                    is_blocked = any(
+                        keyword in error_msg for keyword in security_keywords
+                    )
 
                     return AttackResult(
                         attack_name=attack_name,
@@ -586,7 +626,7 @@ class SecurityTestHarness:
                         execution_time_ms=execution_time,
                         sys_modules_before=modules_before,
                         sys_modules_after=modules_after,
-                        suspicious_modules=suspicious
+                        suspicious_modules=suspicious,
                     )
 
                 finally:
@@ -606,7 +646,7 @@ class SecurityTestHarness:
                 execution_time_ms=execution_time,
                 sys_modules_before=modules_before,
                 sys_modules_after=modules_after,
-                suspicious_modules=suspicious
+                suspicious_modules=suspicious,
             )
 
     def _extract_import_statements(self, code: str) -> List[str]:
@@ -625,17 +665,18 @@ class SecurityTestHarness:
         except:
             # Fallback: simple regex-based extraction
             import re
-            return re.findall(r'^(?:import|from)\s+.*$', code, re.MULTILINE)
+
+            return re.findall(r"^(?:import|from)\s+.*$", code, re.MULTILINE)
 
     def _extract_module_name(self, import_statement: str) -> Optional[str]:
         """Extract module name from import statement"""
         try:
             if import_statement.startswith("import "):
-                return import_statement.split()[1].split('.')[0]
+                return import_statement.split()[1].split(".")[0]
             elif import_statement.startswith("from "):
                 parts = import_statement.split()
                 if len(parts) >= 2:
-                    return parts[1].split('.')[0]
+                    return parts[1].split(".")[0]
         except:
             pass
         return None
@@ -645,91 +686,198 @@ class SecurityTestHarness:
         attacks = []
 
         # 0. CRITICAL: Isolation bypass attempts (test for CVE-003-001)
-        attacks.extend([
-            ("isolation_breach_symbolic_mcp", "import symbolic_mcp; print('SECURITY BREACH - symbolic_mcp imported')"),
-            ("isolation_breach_src", "import src; print('SECURITY BREACH - src imported')"),
-            ("isolation_breach_main", "import main; print('SECURITY BREACH - main imported')"),
-            ("isolation_breach_tests", "import tests; print('SECURITY BREACH - tests imported')"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "isolation_breach_symbolic_mcp",
+                    "import symbolic_mcp; print('SECURITY BREACH - symbolic_mcp imported')",  # noqa: E501
+                ),
+                (
+                    "isolation_breach_src",
+                    "import src; print('SECURITY BREACH - src imported')",
+                ),
+                (
+                    "isolation_breach_main",
+                    "import main; print('SECURITY BREACH - main imported')",
+                ),
+                (
+                    "isolation_breach_tests",
+                    "import tests; print('SECURITY BREACH - tests imported')",
+                ),
+            ]
+        )
 
         # 1. Direct import attempts
-        attacks.extend([
-            ("import_os", "import os; print('OS imported successfully')"),
-            ("import_subprocess", "import subprocess; print('Subprocess imported successfully')"),
-            ("import_sys", "import sys; print('Sys imported successfully')"),
-        ])
+        attacks.extend(
+            [
+                ("import_os", "import os; print('OS imported successfully')"),
+                (
+                    "import_subprocess",
+                    "import subprocess; print('Subprocess imported successfully')",
+                ),
+                ("import_sys", "import sys; print('Sys imported successfully')"),
+            ]
+        )
 
         # 2. Importlib-based attacks
-        attacks.extend([
-            ("importlib_import", "import importlib; os = importlib.import_module('os')"),
-            ("importlib_dynamic", "import importlib.util; spec = importlib.util.find_spec('os')"),
-            ("importlib_loader", "import importlib.machinery; loader = importlib.machinery.PathFinder()"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "importlib_import",
+                    "import importlib; os = importlib.import_module('os')",
+                ),
+                (
+                    "importlib_dynamic",
+                    "import importlib.util; spec = importlib.util.find_spec('os')",
+                ),
+                (
+                    "importlib_loader",
+                    "import importlib.machinery; loader = importlib.machinery.PathFinder()",  # noqa: E501
+                ),
+            ]
+        )
 
         # 3. __import__ attacks
-        attacks.extend([
-            ("builtin_import", "os = __import__('os')"),
-            ("builtin_import_nested", "subprocess = __import__('subprocess').subprocess"),
-            ("builtin_import_fromlist", "sys = __import__('sys', fromlist=['path'])"),
-        ])
+        attacks.extend(
+            [
+                ("builtin_import", "os = __import__('os')"),
+                (
+                    "builtin_import_nested",
+                    "subprocess = __import__('subprocess').subprocess",
+                ),
+                (
+                    "builtin_import_fromlist",
+                    "sys = __import__('sys', fromlist=['path'])",
+                ),
+            ]
+        )
 
         # 4. Module manipulation attacks
-        attacks.extend([
-            ("module_add", "import sys; sys.modules['os'] = type(sys)('fake_os')"),
-            ("module_replace", "import types; fake_os = types.ModuleType('os'); sys.modules['os'] = fake_os"),
-            ("module_dict", "import sys; sys.modules.__setitem__('socket', object())"),
-        ])
+        attacks.extend(
+            [
+                ("module_add", "import sys; sys.modules['os'] = type(sys)('fake_os')"),
+                (
+                    "module_replace",
+                    "import types; fake_os = types.ModuleType('os'); sys.modules['os'] = fake_os",
+                ),
+                (
+                    "module_dict",
+                    "import sys; sys.modules.__setitem__('socket', object())",  # noqa: E501
+                ),
+            ]
+        )
 
         # 5. Exec/eval based attacks
-        attacks.extend([
-            ("exec_attack", "exec('import os')"),
-            ("eval_attack", "eval('__import__(\"os\")')"),
-            ("compile_attack", "code = compile('import os', '<string>', 'exec'); exec(code)"),
-        ])
+        attacks.extend(
+            [
+                ("exec_attack", "exec('import os')"),
+                ("eval_attack", "eval('__import__(\"os\")')"),
+                (
+                    "compile_attack",
+                    "code = compile('import os', '<string>', 'exec'); exec(code)",
+                ),
+            ]
+        )
 
         # 6. Path manipulation attacks
-        attacks.extend([
-            ("path_injection", "import sys; sys.path.insert(0, '/etc'); import passwd"),
-            ("path_manipulation", "import sys; sys.path.append('/usr/lib'); import secrets"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "path_injection",
+                    "import sys; sys.path.insert(0, '/etc'); import passwd",
+                ),
+                (
+                    "path_manipulation",
+                    "import sys; sys.path.append('/usr/lib'); import secrets",
+                ),
+            ]
+        )
 
         # 7. Class-based attacks
-        attacks.extend([
-            ("class_inheritance", "class FakeImporter: __class__ = __import__('os').__class__"),
-            ("metaclass_attack", "class Meta(type): __module__ = 'os'; FakeOs = Meta('FakeOs', (), {})"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "class_inheritance",
+                    "class FakeImporter: __class__ = __import__('os').__class__",
+                ),
+                (
+                    "metaclass_attack",
+                    "class Meta(type): __module__ = 'os'; FakeOs = Meta('FakeOs', (), {})",  # noqa: E501
+                ),
+            ]
+        )
 
         # 8. Advanced bypass attempts
-        attacks.extend([
-            ("globals_access", "globals()['__builtins__']['__import__']('os')"),
-            ("locals_manipulation", "locals()['__import__'] = __import__; __import__('os')"),
-            ("getattr_attack", "getattr(__import__('sys'), 'modules')"),
-            ("hasattr_attack", "hasattr(__import__('sys'), 'modules') and setattr(sys.modules, 'os', type(sys))"),
-        ])
+        attacks.extend(
+            [
+                ("globals_access", "globals()['__builtins__']['__import__']('os')"),
+                (
+                    "locals_manipulation",
+                    "locals()['__import__'] = __import__; __import__('os')",
+                ),
+                ("getattr_attack", "getattr(__import__('sys'), 'modules')"),
+                (
+                    "hasattr_attack",
+                    "hasattr(__import__('sys'), 'modules') and setattr(sys.modules, 'os', type(sys))",  # noqa: E501
+                ),
+            ]
+        )
 
         # 9. Ctypes and low-level attacks
-        attacks.extend([
-            ("ctypes_attack", "import ctypes; lib = ctypes.CDLL(None); lib.system('echo pwned')"),
-            ("ctypes_dlopen", "import ctypes; ctypes.CDLL('libc.so.6').system('echo pwned')"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "ctypes_attack",
+                    "import ctypes; lib = ctypes.CDLL(None); lib.system('echo pwned')",
+                ),
+                (
+                    "ctypes_dlopen",
+                    "import ctypes; ctypes.CDLL('libc.so.6').system('echo pwned')",
+                ),
+            ]
+        )
 
         # 10. Pickle/marshal attacks
-        attacks.extend([
-            ("pickle_attack", "import pickle; pickle.loads(b'cos\\nsystem\\n(Vecho pwned\\no.')"),
-            ("marshal_attack", "import marshal; marshal.loads(b'\\x01\\x00\\x00\\x00s')"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "pickle_attack",
+                    "import pickle; pickle.loads(b'cos\\nsystem\\n(Vecho pwned\\no.')",
+                ),
+                (
+                    "marshal_attack",
+                    "import marshal; marshal.loads(b'\\x01\\x00\\x00\\x00s')",
+                ),
+            ]
+        )
 
         # 11. Base64/encoding bypass attempts
-        attacks.extend([
-            ("base64_decode", "import base64; exec(base64.b64decode('aW1wb3J0IG9z'))"),
-            ("rot13_decode", "import codecs; exec(codecs.decode('vzcbeg bf', 'rot_13'))"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "base64_decode",
+                    "import base64; exec(base64.b64decode('aW1wb3J0IG9z'))",
+                ),
+                (
+                    "rot13_decode",
+                    "import codecs; exec(codecs.decode('vzcbeg bf', 'rot_13'))",
+                ),
+            ]
+        )
 
         # 12. Module aliasing attacks
-        attacks.extend([
-            ("alias_attack", "import importlib; fake = importlib; fake.import_module('os')"),
-            ("chain_attack", "import importlib.util; util = importlib.util; spec = util.find_spec('os')"),
-        ])
+        attacks.extend(
+            [
+                (
+                    "alias_attack",
+                    "import importlib; fake = importlib; fake.import_module('os')",
+                ),
+                (
+                    "chain_attack",
+                    "import importlib.util; util = importlib.util; spec = util.find_spec('os')",  # noqa: E501
+                ),
+            ]
+        )
 
         return attacks
 
@@ -762,7 +910,9 @@ class SecurityTestHarness:
             if not result.blocked:
                 vulnerabilities.append(f"{result.attack_name}: {result.error_message}")
             if result.suspicious_modules:
-                vulnerabilities.append(f"{result.attack_name}: Suspicious modules loaded: {result.suspicious_modules}")
+                vulnerabilities.append(  # noqa: E501
+                    f"{result.attack_name}: Suspicious modules loaded: {result.suspicious_modules}"
+                )
 
         suite = SecurityTestSuite(
             test_name=test_name,
@@ -771,10 +921,12 @@ class SecurityTestHarness:
             bypassed_attacks=bypassed_count,
             security_score=security_score,
             attack_results=attack_results,
-            vulnerabilities_found=vulnerabilities
+            vulnerabilities_found=vulnerabilities,
         )
 
-        print(f"Security test completed: {security_score:.2%} blocked ({blocked_count}/{len(attacks)})")
+        print(  # noqa: E501
+            f"Security test completed: {security_score:.2%} blocked ({blocked_count}/{len(attacks)})"
+        )
 
         return suite
 
@@ -801,7 +953,10 @@ class SecurityTestHarness:
                 return False
 
             # Check isolation breach indicators in result
-            if hasattr(result, 'error_message') and 'isolation_breach' in result.error_message:
+            if (  # noqa: E501
+                hasattr(result, "error_message")
+                and "isolation_breach" in result.error_message
+            ):
                 print(f"🚨 CRITICAL: Isolation breach detected in result - {test_name}")
                 return False
 
@@ -812,21 +967,31 @@ class SecurityTestHarness:
         """Assert security requirements are met"""
         # CRITICAL: First verify isolation is working
         if not self.verify_isolation_security():
-            pytest.fail("CRITICAL: Process isolation verification FAILED - CVE-003-001 not fixed")
+            pytest.fail(  # noqa: E501
+                "CRITICAL: Process isolation verification FAILED - CVE-003-001 not fixed"
+            )
 
         # Critical security assertions
-        assert suite.security_score >= 0.95, f"Security score too low: {suite.security_score:.2%}"
-        assert suite.bypassed_attacks == 0, f"Security bypasses detected: {suite.bypassed_attacks}"
+        assert (
+            suite.security_score >= 0.95
+        ), f"Security score too low: {suite.security_score:.2%}"
+        assert (
+            suite.bypassed_attacks == 0
+        ), f"Security bypasses detected: {suite.bypassed_attacks}"
 
         # Check for suspicious modules
         for result in suite.attack_results:
             if result.suspicious_modules:
-                pytest.fail(f"Suspicious modules loaded by {result.attack_name}: {result.suspicious_modules}")
+                pytest.fail(  # noqa: E501
+                    f"Suspicious modules loaded by {result.attack_name}: {result.suspicious_modules}"
+                )
 
         # CRITICAL: Check for isolation breaches
         for result in suite.attack_results:
-            if 'isolation_breach' in result.error_message.lower():
-                pytest.fail(f"Isolation breach detected by {result.attack_name}: {result.error_message}")
+            if "isolation_breach" in result.error_message.lower():
+                pytest.fail(
+                    f"Isolation breach detected by {result.attack_name}: {result.error_message}"
+                )
 
         print(f"✅ Security requirements met for {suite.test_name}")
 
@@ -835,20 +1000,37 @@ class SecurityTestHarness:
 @pytest.fixture
 def security_harness():
     """Pytest fixture for security test harness with process isolation"""
-    return SecurityTestHarness(use_process_isolation=True)
+    from .mocks import MockRestrictedImporter, MockSecurityValidator
+
+    return SecurityTestHarness(  # noqa: E501
+        use_process_isolation=True,
+        security_validator=MockSecurityValidator(),
+        restricted_importer=MockRestrictedImporter(),
+    )
 
 
 @pytest.fixture
 def security_harness_no_isolation():
     """Pytest fixture for security test harness without process isolation (for testing)"""
-    return SecurityTestHarness(use_process_isolation=False)
+    from .mocks import MockRestrictedImporter, MockSecurityValidator
+
+    return SecurityTestHarness(
+        use_process_isolation=False,
+        security_validator=MockSecurityValidator(),
+        restricted_importer=MockRestrictedImporter(),
+    )
 
 
 @pytest.fixture
 def mock_security_harness():
     """Pytest fixture for security test harness with mock dependencies"""
-    container = create_test_container(use_mocks=True)
-    return SecurityTestHarness(use_process_isolation=False, container=container)
+    from .mocks import MockRestrictedImporter, MockSecurityValidator
+
+    return SecurityTestHarness(
+        use_process_isolation=False,
+        security_validator=MockSecurityValidator(),
+        restricted_importer=MockRestrictedImporter(),
+    )
 
 
 @pytest.mark.security
@@ -863,7 +1045,9 @@ def test_security_basic_import_blocking(security_harness):
 
     for attack_name, payload in basic_attacks:
         result = security_harness.execute_attack(payload, attack_name)
-        assert result.blocked, f"Basic attack not blocked: {attack_name} - {result.error_message}"
+        assert (
+            result.blocked
+        ), f"Basic attack not blocked: {attack_name} - {result.error_message}"
 
 
 @pytest.mark.security
@@ -907,10 +1091,12 @@ def test_security_whitelist_enforcement(security_harness):
         result = security_harness.execute_attack(payload, attack_name)
         assert result.blocked, f"Whitelist violation not detected: {attack_name}"
 
-    # Test that whitelisted modules should work (this might need adjustment based on actual whitelist)
-    for allowed_module in ['math', 'json', 'datetime']:  # Common safe modules
+    # Test that whitelisted modules should work (this might need adjustment based on actual whitelist)  # noqa: E501
+    for allowed_module in ["math", "json", "datetime"]:  # Common safe modules
         try:
-            result = security_harness.execute_attack(f"import {allowed_module}", f"allowed_test_{allowed_module}")
+            result = security_harness.execute_attack(
+                f"import {allowed_module}", f"allowed_test_{allowed_module}"
+            )
             # This might be blocked depending on the actual whitelist - adjust test accordingly
         except:
             pass  # Expected if not in whitelist
@@ -946,15 +1132,21 @@ def test_security_timing_analysis(security_harness):
     blocked_times = []
     for payload in blocked_payloads:
         start = time.time()
-        result = security_harness.execute_attack(payload, f"timing_test_{len(blocked_times)}")
+        result = security_harness.execute_attack(
+            payload, f"timing_test_{len(blocked_times)}"
+        )
         blocked_times.append(result.execution_time_ms)
 
     # Security measures shouldn't be excessively slow
     avg_legitimate_time = sum(legitimate_times) / len(legitimate_times)
     avg_blocked_time = sum(blocked_times) / len(blocked_times)
 
-    assert avg_blocked_time < 1000, f"Security checks too slow: {avg_blocked_time:.1f}ms average"
-    print(f"Performance check: {avg_legitimate_time:.1f}ms legitimate, {avg_blocked_time:.1f}ms blocked")
+    assert (
+        avg_blocked_time < 1000
+    ), f"Security checks too slow: {avg_blocked_time:.1f}ms average"
+    print(  # noqa: E501
+        f"Performance check: {avg_legitimate_time:.1f}ms legitimate, {avg_blocked_time:.1f}ms blocked"
+    )
 
 
 if __name__ == "__main__":
@@ -963,14 +1155,14 @@ if __name__ == "__main__":
         harness = SecurityTestHarness()
         suite = harness.run_security_test_suite("standalone_security_test")
 
-        print(f"\nSecurity Test Results:")
+        print(f"\nSecurity Test Results:")  # noqa: F541
         print(f"Total attacks: {suite.total_attacks}")
         print(f"Blocked: {suite.blocked_attacks}")
         print(f"Bypassed: {suite.bypassed_attacks}")
         print(f"Security score: {suite.security_score:.2%}")
 
         if suite.vulnerabilities_found:
-            print(f"\nVulnerabilities found:")
+            print(f"\nVulnerabilities found:")  # noqa: F541
             for vuln in suite.vulnerabilities_found:
                 print(f"  - {vuln}")
 
