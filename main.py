@@ -18,8 +18,9 @@ import tempfile
 import textwrap
 import threading
 import time
+import types
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Generator, NotRequired, Optional, Union
 
 from crosshair.core import AnalysisOptionSet
 from crosshair.core_and_libs import (
@@ -30,6 +31,7 @@ from crosshair.core_and_libs import (
     run_checkables,
 )
 from fastmcp import FastMCP
+from typing_extensions import TypedDict
 
 # Version information
 try:
@@ -39,6 +41,101 @@ except ImportError:
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+# --- Type Definitions ---
+
+
+class _Counterexample(TypedDict):
+    """A counterexample found during symbolic execution."""
+
+    args: dict[str, Any]
+    kwargs: dict[str, Any]
+    violation: str
+    actual_result: str
+    path_condition: str
+
+
+class _SymbolicCheckResult(TypedDict):
+    """Result of symbolic execution analysis."""
+
+    status: str  # "verified" | "counterexample" | "timeout" | "error"
+    counterexamples: list[_Counterexample]
+    paths_explored: int
+    paths_verified: int
+    time_seconds: float
+    coverage_estimate: float
+
+
+class _ValidationResult(TypedDict):
+    """Result of code validation."""
+
+    valid: bool
+    error: NotRequired[str]
+    error_type: NotRequired[str]
+
+
+class _ExceptionPathResult(TypedDict):
+    """Result of finding a path to an exception."""
+
+    status: str  # "found" | "unreachable" | "error"
+    triggering_inputs: NotRequired[list[_Counterexample]]
+    paths_to_exception: int
+    total_paths_explored: int
+    time_seconds: NotRequired[float]
+    error_type: NotRequired[str]
+    message: NotRequired[str]
+
+
+class _FunctionComparisonResult(TypedDict):
+    """Result of comparing two functions."""
+
+    status: str  # "equivalent" | "different" | "error"
+    distinguishing_input: NotRequired[Optional[_Counterexample]]
+    paths_compared: int
+    confidence: NotRequired[str]
+    error_type: NotRequired[str]
+    message: NotRequired[str]
+
+
+class _BranchInfo(TypedDict):
+    """Information about a branch."""
+
+    line: int
+    condition: str
+    true_reachable: Optional[bool]
+    false_reachable: Optional[bool]
+    true_example: Optional[str]
+    false_example: Optional[str]
+
+
+class _BranchAnalysisResult(TypedDict):
+    """Result of branch analysis."""
+
+    status: str  # "complete" | "error"
+    branches: list[_BranchInfo]
+    total_branches: int
+    reachable_branches: int
+    dead_code_lines: list[int]
+    cyclomatic_complexity: int
+    time_seconds: float
+    analysis_mode: str  # "static" | "symbolic"
+    error_type: NotRequired[str]
+    message: NotRequired[str]
+    line: NotRequired[int]
+
+
+class _HealthCheckResult(TypedDict):
+    """Result of health check."""
+
+    status: str
+    version: str
+    python_version: str
+    crosshair_version: Optional[str]
+    z3_version: Optional[str]
+    platform: str
+    memory_usage_mb: float
+
 
 # --- Security: Import Whitelist ---
 
@@ -223,7 +320,7 @@ _RESULT_PATTERN = re.compile(r"which returns\s+(.+)\)$")
 _EXC_PATTERN = re.compile(r"^(\w+(?:\s+\w+)*)?:")
 
 
-def _parse_function_args(args_str: str) -> List[str]:
+def _parse_function_args(args_str: str) -> list[str]:
     """Parse function arguments from a string, handling nested expressions.
 
     This parser properly handles:
@@ -549,7 +646,7 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def validate_code(code: str) -> Dict[str, Any]:
+def validate_code(code: str) -> _ValidationResult:
     """Validate user code before execution.
 
     Uses AST-based detection to prevent security bypasses:
@@ -559,7 +656,7 @@ def validate_code(code: str) -> Dict[str, Any]:
     - {"f": eval}["f"]() - dict lookup bypass
 
     Returns:
-        Dict with 'valid': bool and 'error': str if invalid
+        ValidationResult with 'valid': bool and optional 'error': str if invalid
     """
     # Empty string edge case
     if not code or not code.strip():
@@ -639,7 +736,7 @@ def validate_code(code: str) -> Dict[str, Any]:
 # This is shared by SymbolicAnalyzer and the logic functions to ensure
 # consistent resource cleanup across all code paths.
 @contextlib.contextmanager
-def _temporary_module(code: str):
+def _temporary_module(code: str) -> Generator[types.ModuleType, None, None]:
     """Create a temporary module from code with guaranteed cleanup.
 
     This context manager ensures that temporary files and sys.modules entries
@@ -700,7 +797,7 @@ class SymbolicAnalyzer:
     # Use the module-level context manager for consistency
     _temporary_module = staticmethod(_temporary_module)
 
-    def analyze(self, code: str, target_function_name: str) -> Dict[str, Any]:
+    def analyze(self, code: str, target_function_name: str) -> _SymbolicCheckResult:
         """Analyze a function using symbolic execution."""
         start_time = time.perf_counter()
 
@@ -742,13 +839,13 @@ class SymbolicAnalyzer:
                 # Get checkables from analyze_function
                 checkables = analyze_function(func, options)
 
-                counterexamples: List[Dict[str, Any]] = []
+                counterexamples: list[_Counterexample] = []
                 paths_explored = 0
                 paths_verified = 0
 
                 if checkables:
                     # Run checkables to get analysis messages
-                    messages: List[AnalysisMessage] = list(run_checkables(checkables))
+                    messages: list[AnalysisMessage] = list(run_checkables(checkables))
 
                     # Get function signature for proper arg name mapping
                     try:
@@ -777,8 +874,8 @@ class SymbolicAnalyzer:
                             # Parse the message to extract args if present
                             # Message format: "false when calling func(arg1, arg2) (which returns ...)"
                             # Or: "ExceptionType: when calling func(arg1, arg2)"
-                            args: Dict[str, Any] = {}
-                            kwargs: Dict[str, Any] = {}
+                            args: dict[str, Any] = {}
+                            kwargs: dict[str, Any] = {}
                             actual_result = ""
                             path_condition = ""
 
@@ -932,7 +1029,7 @@ class SymbolicAnalyzer:
 
 def logic_symbolic_check(
     code: str, function_name: str, timeout_seconds: int = 30
-) -> Dict[str, Any]:
+) -> _SymbolicCheckResult:
     """Symbolically verify that a function satisfies its contract.
 
     This is the core logic function for symbolic_check, exposed for testing.
@@ -941,7 +1038,9 @@ def logic_symbolic_check(
     return analyzer.analyze(code, function_name)
 
 
-def _extract_function_signature(module, function_name: str) -> Optional[str]:
+def _extract_function_signature(
+    module: types.ModuleType, function_name: str
+) -> Optional[str]:
     """Extract the signature of a function for wrapper generation.
 
     Returns a string like '(x: int, y: int) -> int' or None if not found.
@@ -982,7 +1081,7 @@ def _extract_function_signature(module, function_name: str) -> Optional[str]:
 
 def logic_find_path_to_exception(
     code: str, function_name: str, exception_type: str, timeout_seconds: int
-) -> Dict[str, Any]:
+) -> _ExceptionPathResult:
     """Find concrete inputs that cause a specific exception type."""
     # First, load the module to get the function signature
     start_time = time.perf_counter()
@@ -1104,7 +1203,7 @@ def _exception_hunter_wrapper{func_sig}:
 
 def logic_compare_functions(
     code: str, function_a: str, function_b: str, timeout_seconds: int
-) -> Dict[str, Any]:
+) -> _FunctionComparisonResult:
     """Check if two functions are semantically equivalent."""
     # First, load the module to get function signatures
     validation = validate_code(code)
@@ -1203,7 +1302,7 @@ def logic_analyze_branches(
     function_name: str,
     timeout_seconds: int = 30,
     symbolic_reachability: bool = False,
-) -> Dict[str, Any]:
+) -> _BranchAnalysisResult:
     """Enumerate branch conditions and report static or symbolic reachability.
 
     Args:
@@ -1313,7 +1412,7 @@ def logic_analyze_branches(
     complexity = visitor.complexity
 
     # If symbolic reachability is requested, perform deeper analysis
-    dead_code_lines: List[int] = []
+    dead_code_lines: list[int] = []
     reachable_branches = len(branches)
 
     if symbolic_reachability:
@@ -1364,7 +1463,7 @@ mcp = FastMCP(
 @mcp.tool()
 def symbolic_check(
     code: str, function_name: str, timeout_seconds: int = 30
-) -> Dict[str, Any]:
+) -> _SymbolicCheckResult:
     """Symbolically verify that a function satisfies its contract.
 
     Args:
@@ -1373,7 +1472,7 @@ def symbolic_check(
         timeout_seconds: Analysis timeout in seconds (default: 30)
 
     Returns:
-        Dict with status, counterexamples, paths explored, etc.
+        SymbolicCheckResult with status, counterexamples, paths explored, etc.
     """
     return logic_symbolic_check(code, function_name, timeout_seconds)
 
@@ -1381,7 +1480,7 @@ def symbolic_check(
 @mcp.tool()
 def find_path_to_exception(
     code: str, function_name: str, exception_type: str, timeout_seconds: int = 30
-) -> Dict[str, Any]:
+) -> _ExceptionPathResult:
     """Find concrete inputs that cause a specific exception type to be raised."""
     return logic_find_path_to_exception(
         code, function_name, exception_type, timeout_seconds
@@ -1391,7 +1490,7 @@ def find_path_to_exception(
 @mcp.tool()
 def compare_functions(
     code: str, function_a: str, function_b: str, timeout_seconds: int = 60
-) -> Dict[str, Any]:
+) -> _FunctionComparisonResult:
     """Check if two functions are semantically equivalent."""
     return logic_compare_functions(code, function_a, function_b, timeout_seconds)
 
@@ -1402,7 +1501,7 @@ def analyze_branches(
     function_name: str,
     timeout_seconds: int = 30,
     symbolic_reachability: bool = False,
-) -> Dict[str, Any]:
+) -> _BranchAnalysisResult:
     """Enumerate branch conditions and report static or symbolic reachability.
 
     Args:
@@ -1412,7 +1511,7 @@ def analyze_branches(
         symbolic_reachability: If True, use symbolic execution to prove reachability (default: False)
 
     Returns:
-        Dict with branch information, complexity, and dead code detection.
+        BranchAnalysisResult with branch information, complexity, and dead code detection.
     """
     return logic_analyze_branches(
         code, function_name, timeout_seconds, symbolic_reachability
@@ -1420,7 +1519,7 @@ def analyze_branches(
 
 
 @mcp.tool()
-def health_check() -> Dict[str, Any]:
+def health_check() -> _HealthCheckResult:
     """Health check for the Symbolic Execution MCP server.
 
     Returns server status, version information, and resource usage.
