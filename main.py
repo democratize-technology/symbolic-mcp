@@ -569,11 +569,14 @@ class SymbolicAnalyzer:
                                             if i < len(param_names)
                                             else f"arg{i}"
                                         )
+                                        # Try int first - safe parsing with try/except
+                                        # This handles both positive and negative integers
+                                        # and properly rejects invalid formats like "--123"
                                         try:
-                                            # Try int
-                                            if val.lstrip("-").isdigit():
-                                                args[arg_name] = int(val)
-                                            elif val == "True":
+                                            args[arg_name] = int(val)
+                                        except ValueError:
+                                            # Not an integer, check for other known values
+                                            if val == "True":
                                                 args[arg_name] = True
                                             elif val == "False":
                                                 args[arg_name] = False
@@ -581,8 +584,6 @@ class SymbolicAnalyzer:
                                                 args[arg_name] = None
                                             else:
                                                 args[arg_name] = val
-                                        except ValueError:
-                                            args[arg_name] = val
 
                             counterexamples.append(
                                 {
