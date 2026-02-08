@@ -28,14 +28,14 @@ This file provides pytest configuration, markers, and shared fixtures
 for the comprehensive integration test suite.
 """
 
-import asyncio  # noqa: E402
-import os  # noqa: E402
-import shutil  # noqa: E402
-import sys  # noqa: E402
-import tempfile  # noqa: E402
-from typing import Any, Dict, Generator  # noqa: E402
+import asyncio
+import os
+import shutil
+import sys
+import tempfile
+from typing import Any, Dict, Generator
 
-import pytest  # noqa: E402
+import pytest
 
 # Add project root to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -222,7 +222,7 @@ def validate_test_environment():
         print("⚠️  CrossHair not available - testing graceful degradation")
 
     print(f"✅ Python version: {sys.version}")
-    print(f"✅ Test environment validated")  # noqa: F541
+    print("✅ Test environment validated")
     print("=" * 60 + "\n")
 
 

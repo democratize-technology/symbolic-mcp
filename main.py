@@ -81,6 +81,13 @@ BLOCKED_MODULES = frozenset(
         "codeop",
         "pty",
         "tty",
+        "termios",
+        "threading",
+        "signal",
+        "fcntl",
+        "resource",
+        "syslog",
+        "getpass",
     }
 )
 
@@ -432,8 +439,8 @@ class SymbolicAnalyzer:
             if os.path.exists(tmp_path):
                 try:
                     os.unlink(tmp_path)
-                except OSError:
-                    pass
+                except OSError as e:
+                    logger.debug(f"Failed to delete temporary file {tmp_path}: {e}")
 
     def analyze(self, code: str, target_function_name: str) -> Dict[str, Any]:
         """Analyze a function using symbolic execution."""
@@ -461,14 +468,9 @@ class SymbolicAnalyzer:
                 func = getattr(module, target_function_name)
 
                 options = AnalysisOptions(
-                    analysis_kind=[AnalysisKind.PEP316],
-                    enabled=True,
-                    specs_complete=False,
+                    analysis_kind=["PEP316"],
                     per_condition_timeout=float(self.timeout),
                     max_iterations=1000,
-                    report_all=False,
-                    report_verbose=False,
-                    unblock=(),
                     timeout=float(self.timeout),
                     per_path_timeout=float(self.timeout) / 10.0,
                     max_uninteresting_iterations=1000,
@@ -521,24 +523,7 @@ class SymbolicAnalyzer:
             }
 
 
-# Import AnalysisKind from crosshair.options
-try:
-    from crosshair.options import AnalysisKind
-except ImportError:
-    # Fallback for older versions
-    class AnalysisKind:
-        PEP316 = "PEP316"
-
-
 # --- Tool Logic Functions ---
-
-
-def logic_symbolic_check(
-    code: str, function_name: str, timeout_seconds: int
-) -> Dict[str, Any]:
-    """Symbolically verify that a function satisfies its contract."""
-    analyzer = SymbolicAnalyzer(timeout_seconds)
-    return analyzer.analyze(code, function_name)
 
 
 def logic_find_path_to_exception(
@@ -636,82 +621,48 @@ def logic_analyze_branches(
             "line": e.lineno,
         }
 
-    # Find branches
+    # Find branches by iterating through AST nodes directly
+    dedented_code = textwrap.dedent(code)
     branches = []
 
-    class BranchFinder(ast.NodeVisitor):
-        def visit_If(self, node):
-            segment = ast.get_source_segment(textwrap.dedent(code), node.test)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            segment = ast.get_source_segment(dedented_code, node.test)
+            if segment:
+                branches.append({"line": node.lineno, "condition": segment})
+        elif isinstance(node, ast.While):
+            segment = ast.get_source_segment(dedented_code, node.test)
+            if segment:
+                branches.append({"line": node.lineno, "condition": segment})
+        elif isinstance(node, ast.For):
+            segment = ast.get_source_segment(dedented_code, node.target)
             if segment:
                 branches.append(
-                    {
-                        "line": node.lineno,
-                        "condition": segment,
-                    }
+                    {"line": node.lineno, "condition": f"for {segment} in ..."}
                 )
-            self.generic_visit(node)
-
-        def visit_While(self, node):
-            segment = ast.get_source_segment(textwrap.dedent(code), node.test)
-            if segment:
-                branches.append(
-                    {
-                        "line": node.lineno,
-                        "condition": segment,
-                    }
-                )
-            self.generic_visit(node)
-
-        def visit_For(self, node):
-            segment = ast.get_source_segment(textwrap.dedent(code), node.target)
-            if segment:
-                branches.append(
-                    {
-                        "line": node.lineno,
-                        "condition": f"for {segment} in ...",
-                    }
-                )
-            self.generic_visit(node)
-
-    BranchFinder().visit(tree)
 
     # Calculate cyclomatic complexity
     complexity = 1  # Base complexity
 
-    class ComplexityVisitor(ast.NodeVisitor):
-        def __init__(self):
-            nonlocal complexity
-
-        def visit_If(self, node):
-            nonlocal complexity
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
             complexity += 1
+            # Count elif branches
             for orelse in node.orelse:
                 if isinstance(orelse, ast.If):
                     complexity += 1
-            self.generic_visit(node)
-
-        def visit_While(self, node):
-            nonlocal complexity
+        elif isinstance(node, ast.While):
             complexity += 1
-            self.generic_visit(node)
-
-        def visit_For(self, node):
-            nonlocal complexity
+        elif isinstance(node, ast.For):
             complexity += 1
-            self.generic_visit(node)
-
-        def visit_BoolOp(self, node):
-            nonlocal complexity
+        elif isinstance(node, ast.BoolOp):
             complexity += len(node.values) - 1
-            self.generic_visit(node)
-
-    ComplexityVisitor().visit(tree)
 
     return {
         "status": "complete",
         "branches": branches,
         "total_branches": len(branches),
-        "reachable_branches": len(branches),  # Assume reachable without deeper analysis
+        "reachable_branches": len(branches),
         "dead_code_lines": [],
         "cyclomatic_complexity": complexity,
         "time_seconds": round(time.perf_counter() - start_time, 4),
@@ -744,7 +695,8 @@ def symbolic_check(
     code: str, function_name: str, timeout_seconds: int = 30
 ) -> Dict[str, Any]:
     """Symbolically verify that a function satisfies its contract."""
-    return logic_symbolic_check(code, function_name, timeout_seconds)
+    analyzer = SymbolicAnalyzer(timeout_seconds)
+    return analyzer.analyze(code, function_name)
 
 
 @mcp.tool()
