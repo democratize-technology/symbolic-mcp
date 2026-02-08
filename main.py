@@ -9,6 +9,7 @@ import contextlib
 import importlib.util
 import inspect
 import logging
+import math
 import os
 import re
 import resource
@@ -118,6 +119,72 @@ DANGEROUS_BUILTINS = frozenset(
 )
 
 
+# --- Configuration ---
+
+
+def _get_int_env_var(
+    name: str,
+    default: str,
+    min_value: Optional[int] = None,
+    max_value: Optional[int] = None,
+) -> int:
+    """Safely parse an integer environment variable with optional bounds checking.
+
+    Args:
+        name: Environment variable name
+        default: Default value as string
+        min_value: Minimum allowed value (inclusive), or None for no minimum
+        max_value: Maximum allowed value (inclusive), or None for no maximum
+
+    Returns:
+        Parsed integer value, or default if invalid
+
+    Raises:
+        ValueError: If the value is outside the allowed bounds
+    """
+    try:
+        value = int(os.environ.get(name, default))
+    except (ValueError, TypeError):
+        value = int(default)
+
+    if min_value is not None and value < min_value:
+        raise ValueError(f"{name} must be at least {min_value}, got {value}")
+    if max_value is not None and value > max_value:
+        raise ValueError(f"{name} must be at most {max_value}, got {value}")
+
+    return value
+
+
+# Memory limit in MB for symbolic execution (configurable via environment)
+# Min: 128MB, Max: 65536MB (64GB)
+MEMORY_LIMIT_MB = _get_int_env_var(
+    "SYMBOLIC_MEMORY_LIMIT_MB", "2048", min_value=128, max_value=65536
+)
+
+# Code size limit in bytes (configurable via environment)
+# Min: 1024 bytes (1KB), Max: 1048576 bytes (1MB)
+CODE_SIZE_LIMIT = _get_int_env_var(
+    "SYMBOLIC_CODE_SIZE_LIMIT", "65536", min_value=1024, max_value=1048576
+)
+
+# Coverage calculation thresholds (configurable via environment)
+# Min: 100, Max: 100000
+# High confidence threshold: below this count, coverage is considered exhaustive
+COVERAGE_EXHAUSTIVE_THRESHOLD = _get_int_env_var(
+    "SYMBOLIC_COVERAGE_EXHAUSTIVE_THRESHOLD", "1000", min_value=100, max_value=100000
+)
+
+# Coverage degradation factor for logarithmic scaling (see coverage calculation below)
+# Derived from: 1.0 - desired_min_coverage
+# At max_scale_factor (100): coverage = 1.0 - log(100)/log(100) * 0.23 = 0.77
+# This ensures even very large path counts get meaningful (non-zero) coverage estimates
+COVERAGE_DEGRADATION_FACTOR = 0.23
+
+# Maximum scale factor for coverage calculation
+# At 100x the exhaustive threshold, coverage drops to ~0.77
+MAX_COVERAGE_SCALE_FACTOR = 100
+
+
 # --- Memory Management ---
 
 # Module-level lock for sys.modules access.
@@ -128,8 +195,12 @@ DANGEROUS_BUILTINS = frozenset(
 _SYS_MODULES_LOCK = threading.Lock()
 
 
-def set_memory_limit(limit_mb: int = 2048):
-    """Set memory limit for the process to prevent resource exhaustion."""
+def set_memory_limit(limit_mb: int) -> None:
+    """Set memory limit for the process to prevent resource exhaustion.
+
+    Args:
+        limit_mb: Memory limit in megabytes
+    """
     try:
         limit_bytes = limit_mb * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, -1))
@@ -137,7 +208,111 @@ def set_memory_limit(limit_mb: int = 2048):
         pass
 
 
-set_memory_limit()
+set_memory_limit(MEMORY_LIMIT_MB)
+
+
+# --- Pre-compiled Regex Patterns ---
+
+# Pattern for parsing function call messages from CrossHair
+_CALL_PATTERN = re.compile(r"calling\s+(\w+)\((.*?)\)(?:\s*\(which|\s*$)")
+
+# Pattern for extracting result values from messages
+_RESULT_PATTERN = re.compile(r"which returns\s+(.+)\)$")
+
+# Pattern for extracting exception type from error messages
+_EXC_PATTERN = re.compile(r"^(\w+(?:\s+\w+)*)?:")
+
+
+def _parse_function_args(args_str: str) -> List[str]:
+    """Parse function arguments from a string, handling nested expressions.
+
+    This parser properly handles:
+    - Simple args: "x, y, z" -> ["x", "y", "z"]
+    - Nested calls: "f(x), g(y)" -> ["f(x)", "g(y)"]
+    - Complex expressions: "float('nan'), 1" -> ["float('nan')", "1"]
+    - Empty strings: "" -> []
+
+    Args:
+        args_str: String containing comma-separated arguments
+
+    Returns:
+        List of parsed argument strings
+    """
+    args_str = args_str.strip()
+    if not args_str:
+        return []
+
+    result = []
+    current = []
+    paren_depth = 0
+    bracket_depth = 0
+    brace_depth = 0
+    in_string = False
+    string_char = None
+
+    i = 0
+    while i < len(args_str):
+        char = args_str[i]
+
+        # Handle string literals
+        if char in ('"', "'") and (i == 0 or args_str[i - 1] != "\\"):
+            if not in_string:
+                in_string = True
+                string_char = char
+            elif char == string_char:
+                in_string = False
+                string_char = None
+            current.append(char)
+        # Inside string, just append
+        elif in_string:
+            current.append(char)
+        # Handle nested structures
+        elif char == "(":
+            paren_depth += 1
+            current.append(char)
+        elif char == ")":
+            paren_depth -= 1
+            current.append(char)
+        elif char == "[":
+            bracket_depth += 1
+            current.append(char)
+        elif char == "]":
+            bracket_depth -= 1
+            current.append(char)
+        elif char == "{":
+            brace_depth += 1
+            current.append(char)
+        elif char == "}":
+            brace_depth -= 1
+            current.append(char)
+        # Handle comma separator (only when not in nested structure)
+        elif (
+            char == "," and paren_depth == 0 and bracket_depth == 0 and brace_depth == 0
+        ):
+            arg = "".join(current).strip()
+            if arg:
+                result.append(arg)
+            current = []
+        # Skip whitespace only when not in a nested structure
+        elif (
+            char.isspace()
+            and paren_depth == 0
+            and bracket_depth == 0
+            and brace_depth == 0
+            and not current
+        ):
+            pass  # Skip leading whitespace
+        else:
+            current.append(char)
+
+        i += 1
+
+    # Add the last argument
+    arg = "".join(current).strip()
+    if arg:
+        result.append(arg)
+
+    return result
 
 
 # --- Input Validation ---
@@ -287,13 +462,25 @@ class _DangerousCallVisitor(ast.NodeVisitor):
                 self.dangerous_calls.append("__builtins__[...]")
                 self.builtins_access.append("__builtins__[...]")
         # Check for subscripted expressions like (__builtins__)["eval"]
+        # Use a targeted visitor instead of ast.walk to avoid O(n²) complexity
         elif isinstance(node.value, (ast.BinOp, ast.BoolOp, ast.Compare)):
-            # Check if __builtins__ appears in the expression
-            for child in ast.walk(node.value):
-                if isinstance(child, ast.Name) and child.id == "__builtins__":
-                    self.dangerous_calls.append("__builtins__[...]")
-                    self.builtins_access.append("__builtins__[...]")
-                    break
+            # Check if __builtins__ appears in the expression using a visitor
+            class _BuiltinsFinder(ast.NodeVisitor):
+                def __init__(self):
+                    self.found = False
+
+                def visit_Name(self, n):
+                    if n.id == "__builtins__":
+                        self.found = True
+                    # Don't continue traversal if found
+                    if not self.found:
+                        self.generic_visit(n)
+
+            finder = _BuiltinsFinder()
+            finder.visit(node.value)
+            if finder.found:
+                self.dangerous_calls.append("__builtins__[...]")
+                self.builtins_access.append("__builtins__[...]")
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
@@ -378,9 +565,13 @@ def validate_code(code: str) -> Dict[str, Any]:
     if not code or not code.strip():
         return {"valid": True}
 
-    # Size limit: 64KB
-    if len(code.encode("utf-8")) > 65536:
-        return {"valid": False, "error": "Code size exceeds 64KB limit"}
+    # Size limit check (configurable via SYMBOLIC_CODE_SIZE_LIMIT env var)
+    code_size = len(code.encode("utf-8"))
+    if code_size > CODE_SIZE_LIMIT:
+        return {
+            "valid": False,
+            "error": f"Code size exceeds {CODE_SIZE_LIMIT // 1024}KB limit",
+        }
 
     # Check for blocked imports and dangerous function calls using AST
     try:
@@ -592,17 +783,13 @@ class SymbolicAnalyzer:
                             path_condition = ""
 
                             # Try to parse the function call from the message
-                            call_pattern = (
-                                r"calling\s+(\w+)\((.*?)\)(?:\s*\(which|\s*$)"
-                            )
-                            match = re.search(call_pattern, message.message)
+                            match = _CALL_PATTERN.search(message.message)
                             if match:
                                 args_str = match.group(2)
                                 if args_str:
-                                    # Parse positional args like "12345, -12346"
-                                    arg_values = [
-                                        a.strip() for a in args_str.split(",")
-                                    ]
+                                    # Parse positional args with proper handling of nested expressions
+                                    # This handles cases like "float('nan')" which contain commas
+                                    arg_values = _parse_function_args(args_str)
                                     # Try to convert to appropriate types
                                     for i, val in enumerate(arg_values):
                                         # Use actual parameter name if available
@@ -632,24 +819,33 @@ class SymbolicAnalyzer:
                                     if args:
                                         conditions = []
                                         for arg_name, arg_val in args.items():
-                                            if isinstance(arg_val, str) and '"' in arg_val:
+                                            if (
+                                                isinstance(arg_val, str)
+                                                and '"' in arg_val
+                                            ):
                                                 # Handle string representations like 'float("nan")'
-                                                conditions.append(f'{arg_name}={arg_val}')
+                                                conditions.append(
+                                                    f"{arg_name}={arg_val}"
+                                                )
                                             else:
-                                                conditions.append(f'{arg_name}={repr(arg_val)}')
+                                                conditions.append(
+                                                    f"{arg_name}={repr(arg_val)}"
+                                                )
                                         path_condition = ", ".join(conditions)
 
                             # Extract actual_result from message
                             # Pattern: "which returns X)" at the end of the message
-                            result_match = re.search(r"which returns\s+(.+)\)$", message.message)
+                            result_match = _RESULT_PATTERN.search(message.message)
                             if result_match:
                                 actual_result = result_match.group(1).strip()
                             else:
                                 # Fallback: try to find exception result
                                 # Some messages have format: "ExceptionType: ... when calling ..."
-                                exc_match = re.match(r"^(\w+(?:\s+\w+)*)?:", message.message)
+                                exc_match = _EXC_PATTERN.match(message.message)
                                 if exc_match:
-                                    actual_result = f"exception: {exc_match.group(0).rstrip(':')}"
+                                    actual_result = (
+                                        f"exception: {exc_match.group(0).rstrip(':')}"
+                                    )
 
                             counterexamples.append(
                                 {
@@ -671,10 +867,34 @@ class SymbolicAnalyzer:
                 # Note: paths_explored == 0 with no counterexamples means no contracts to verify
                 # This is treated as "verified" since nothing was disproven
 
-                # Calculate coverage estimate based on paths explored
-                # 1.0 = exhaustive (paths_explored < 1000)
-                # 0.99 = partial but high (paths_explored >= 1000)
-                coverage_estimate = 1.0 if paths_explored < 1000 else 0.99
+                # Calculate coverage estimate based on paths explored using logarithmic scaling
+                # This provides a more gradual degradation than a binary threshold
+                # - For small path counts: coverage approaches 1.0 (exhaustive)
+                # - For large path counts: coverage scales logarithmically
+                if paths_explored == 0:
+                    # No paths explored (no contracts) = unknown coverage
+                    coverage_estimate = 1.0
+                elif paths_explored < COVERAGE_EXHAUSTIVE_THRESHOLD:
+                    # Below threshold: treat as exhaustive
+                    coverage_estimate = 1.0
+                else:
+                    # Above threshold: use logarithmic scaling
+                    # Formula: 1.0 - log(paths/threshold) / log(max_paths) * COVERAGE_DEGRADATION_FACTOR
+                    #
+                    # Coverage degradation behavior (using module-level constants):
+                    # - At 1x threshold: coverage = 1.0
+                    # - At 10x threshold: coverage ≈ 0.94
+                    # - At 100x threshold: coverage ≈ 0.77
+                    scale_factor = min(
+                        paths_explored / COVERAGE_EXHAUSTIVE_THRESHOLD,
+                        MAX_COVERAGE_SCALE_FACTOR,
+                    )
+                    coverage_estimate = (
+                        1.0
+                        - (math.log(scale_factor) / math.log(MAX_COVERAGE_SCALE_FACTOR))
+                        * COVERAGE_DEGRADATION_FACTOR
+                    )
+                    coverage_estimate = round(coverage_estimate, 4)
 
                 return {
                     "status": status,
@@ -1014,78 +1234,68 @@ def logic_analyze_branches(
             "line": e.lineno,
         }
 
-    # Find branches by iterating through AST nodes directly
+    # Use a single-pass visitor to collect both branches and complexity
+    # This avoids multiple O(n) AST traversals
     dedented_code = textwrap.dedent(code)
-    branches = []
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.If):
-            segment = ast.get_source_segment(dedented_code, node.test)
-            if segment:
-                branches.append(
-                    {
-                        "line": node.lineno,
-                        "condition": segment,
-                        "true_reachable": None if symbolic_reachability else True,
-                        "false_reachable": None if symbolic_reachability else True,
-                        "true_example": None,
-                        "false_example": None,
-                    }
-                )
-        elif isinstance(node, ast.While):
-            segment = ast.get_source_segment(dedented_code, node.test)
-            if segment:
-                branches.append(
-                    {
-                        "line": node.lineno,
-                        "condition": segment,
-                        "true_reachable": None if symbolic_reachability else True,
-                        "false_reachable": None if symbolic_reachability else True,
-                        "true_example": None,
-                        "false_example": None,
-                    }
-                )
-        elif isinstance(node, ast.For):
-            segment = ast.get_source_segment(dedented_code, node.target)
-            if segment:
-                branches.append(
-                    {
-                        "line": node.lineno,
-                        "condition": f"for {segment} in ...",
-                        "true_reachable": None if symbolic_reachability else True,
-                        "false_reachable": None if symbolic_reachability else True,
-                        "true_example": None,
-                        "false_example": None,
-                    }
-                )
+    class _BranchAndComplexityVisitor(ast.NodeVisitor):
+        """Single-pass visitor that collects branches and calculates complexity."""
 
-    # Calculate cyclomatic complexity using a NodeVisitor
-    # This avoids double-counting elif branches that ast.walk() would cause
-    class ComplexityVisitor(ast.NodeVisitor):
-        """Count decision points for cyclomatic complexity."""
-
-        def __init__(self) -> None:
+        def __init__(self, source_code: str, symbolic_reachability: bool) -> None:
+            self.branches = []
             self.complexity = 1  # Base complexity
+            self.source_code = source_code
+            self.symbolic_reachability = symbolic_reachability
 
         def visit_If(self, node: ast.If) -> None:
-            """Visit an if statement and count it as one decision point.
-
-            Note: We only count the if itself here. Elif branches are separate
-            If nodes in the AST that will be visited separately by the visitor,
-            so we don't need to explicitly count them here.
-            """
+            """Visit an if statement and count it as one decision point."""
             self.complexity += 1
-            # Continue visiting child nodes to count nested structures
+            segment = ast.get_source_segment(self.source_code, node.test)
+            if segment:
+                self.branches.append(
+                    {
+                        "line": node.lineno,
+                        "condition": segment,
+                        "true_reachable": None if self.symbolic_reachability else True,
+                        "false_reachable": None if self.symbolic_reachability else True,
+                        "true_example": None,
+                        "false_example": None,
+                    }
+                )
             self.generic_visit(node)
 
         def visit_While(self, node: ast.While) -> None:
             """Visit a while loop and count it as one decision point."""
             self.complexity += 1
+            segment = ast.get_source_segment(self.source_code, node.test)
+            if segment:
+                self.branches.append(
+                    {
+                        "line": node.lineno,
+                        "condition": segment,
+                        "true_reachable": None if self.symbolic_reachability else True,
+                        "false_reachable": None if self.symbolic_reachability else True,
+                        "true_example": None,
+                        "false_example": None,
+                    }
+                )
             self.generic_visit(node)
 
         def visit_For(self, node: ast.For) -> None:
             """Visit a for loop and count it as one decision point."""
             self.complexity += 1
+            segment = ast.get_source_segment(self.source_code, node.target)
+            if segment:
+                self.branches.append(
+                    {
+                        "line": node.lineno,
+                        "condition": f"for {segment} in ...",
+                        "true_reachable": None if self.symbolic_reachability else True,
+                        "false_reachable": None if self.symbolic_reachability else True,
+                        "true_example": None,
+                        "false_example": None,
+                    }
+                )
             self.generic_visit(node)
 
         def visit_BoolOp(self, node: ast.BoolOp) -> None:
@@ -1096,8 +1306,10 @@ def logic_analyze_branches(
             self.complexity += len(node.values) - 1
             self.generic_visit(node)
 
-    visitor = ComplexityVisitor()
+    # Single-pass traversal for both branches and complexity
+    visitor = _BranchAndComplexityVisitor(dedented_code, symbolic_reachability)
     visitor.visit(tree)
+    branches = visitor.branches
     complexity = visitor.complexity
 
     # If symbolic reachability is requested, perform deeper analysis

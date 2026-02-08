@@ -21,18 +21,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-#!/usr/bin/env python3
-"""
-Tests for EXACT symbolic_check schema compliance with Section 4 specification.
+# Tests for EXACT symbolic_check schema compliance with Section 4 specification.
+#
+# These tests MUST FAIL initially to prove the current implementation is non-compliant.
+# After implementation fixes, these tests MUST PASS to ensure exact specification compliance.
 
-These tests MUST FAIL initially to prove the current implementation is non-compliant.
-After implementation fixes, these tests MUST PASS to ensure exact specification compliance.
-"""
+import json
+import os
+import sys
+from typing import Any, Dict, List
 
 import pytest
-from typing import Dict, Any, List
-import json
+
+# Clear SYMBOLIC_* environment variables before importing main to ensure
+# consistent default values across all tests
+for key in list(os.environ.keys()):
+    if key.startswith("SYMBOLIC_"):
+        del os.environ[key]
+
 from main import logic_symbolic_check as symbolic_check
+
+
+@pytest.fixture(autouse=True)
+def clear_symbolic_env():
+    """Fixture to clear SYMBOLIC_* environment variables before each test."""
+    # Clear before test
+    keys_to_clear = [k for k in os.environ if k.startswith("SYMBOLIC_")]
+    for key in keys_to_clear:
+        del os.environ[key]
+    yield
+    # Clear after test
+    keys_to_clear = [k for k in os.environ if k.startswith("SYMBOLIC_")]
+    for key in keys_to_clear:
+        del os.environ[key]
 
 
 def test_exact_schema_compliance_counterexample():
@@ -54,32 +75,54 @@ def abs_value(x: float) -> float:
     result = symbolic_check(code=code, function_name="abs_value", timeout_seconds=10)
 
     # Verify status values are exactly as specified
-    assert result["status"] in ["verified", "counterexample", "timeout", "error"], \
-        f"Status must be one of the four exact values, got: {result['status']}"
+    assert result["status"] in [
+        "verified",
+        "counterexample",
+        "timeout",
+        "error",
+    ], f"Status must be one of the four exact values, got: {result['status']}"
 
     if result["status"] == "counterexample":
         # Verify counterexamples array has EXACT structure
         assert "counterexamples" in result, "Missing required 'counterexamples' field"
-        assert isinstance(result["counterexamples"], list), "counterexamples must be a list"
+        assert isinstance(
+            result["counterexamples"], list
+        ), "counterexamples must be a list"
 
         if len(result["counterexamples"]) > 0:
             counterexample = result["counterexamples"][0]
 
             # Verify ALL required fields are present
-            required_fields = ["args", "kwargs", "violation", "actual_result", "path_condition"]
+            required_fields = [
+                "args",
+                "kwargs",
+                "violation",
+                "actual_result",
+                "path_condition",
+            ]
             for field in required_fields:
-                assert field in counterexample, f"Missing required field '{field}' in counterexample"
+                assert (
+                    field in counterexample
+                ), f"Missing required field '{field}' in counterexample"
 
             # Verify field types match specification exactly
             assert isinstance(counterexample["args"], dict), "args must be a dict"
             assert isinstance(counterexample["kwargs"], dict), "kwargs must be a dict"
-            assert isinstance(counterexample["violation"], str), "violation must be a string"
-            assert isinstance(counterexample["actual_result"], str), "actual_result must be a string"
-            assert isinstance(counterexample["path_condition"], str), "path_condition must be a string"
+            assert isinstance(
+                counterexample["violation"], str
+            ), "violation must be a string"
+            assert isinstance(
+                counterexample["actual_result"], str
+            ), "actual_result must be a string"
+            assert isinstance(
+                counterexample["path_condition"], str
+            ), "path_condition must be a string"
 
             # Verify no extra fields are present (strict schema compliance)
             extra_fields = set(counterexample.keys()) - set(required_fields)
-            assert len(extra_fields) == 0, f"Extra fields not allowed in counterexample: {extra_fields}"
+            assert (
+                len(extra_fields) == 0
+            ), f"Extra fields not allowed in counterexample: {extra_fields}"
 
 
 def test_exact_schema_compliance_verified():
@@ -97,7 +140,14 @@ def simple_add(x: int, y: int) -> int:
     result = symbolic_check(code=code, function_name="simple_add", timeout_seconds=10)
 
     # Verify ALL required top-level fields are present
-    required_fields = ["status", "counterexamples", "paths_explored", "paths_verified", "time_seconds", "coverage_estimate"]
+    required_fields = [
+        "status",
+        "counterexamples",
+        "paths_explored",
+        "paths_verified",
+        "time_seconds",
+        "coverage_estimate",
+    ]
     for field in required_fields:
         assert field in result, f"Missing required field '{field}' in result"
 
@@ -106,8 +156,12 @@ def simple_add(x: int, y: int) -> int:
     assert isinstance(result["counterexamples"], list), "counterexamples must be a list"
     assert isinstance(result["paths_explored"], int), "paths_explored must be an int"
     assert isinstance(result["paths_verified"], int), "paths_verified must be an int"
-    assert isinstance(result["time_seconds"], (int, float)), "time_seconds must be numeric"
-    assert isinstance(result["coverage_estimate"], float), "coverage_estimate must be a float"
+    assert isinstance(
+        result["time_seconds"], (int, float)
+    ), "time_seconds must be numeric"
+    assert isinstance(
+        result["coverage_estimate"], float
+    ), "coverage_estimate must be a float"
 
     # Verify no extra fields are present (strict schema compliance)
     allowed_fields = set(required_fields)
@@ -119,17 +173,18 @@ def test_status_values_exact():
     """
     Test that status values are EXACTLY as specified in Section 4.
     """
-    code = '''
+    code = """
 def test_func(x: int) -> int:
     return x
-'''
+"""
 
     result = symbolic_check(code=code, function_name="test_func", timeout_seconds=1)
 
     # Status must be EXACTLY one of these four values
     allowed_statuses = ["verified", "counterexample", "timeout", "error"]
-    assert result["status"] in allowed_statuses, \
-        f"Status must be exactly one of {allowed_statuses}, got: {result['status']}"
+    assert (
+        result["status"] in allowed_statuses
+    ), f"Status must be exactly one of {allowed_statuses}, got: {result['status']}"
 
 
 def test_coverage_estimate_calculation():
@@ -137,26 +192,38 @@ def test_coverage_estimate_calculation():
     Test that coverage_estimate is calculated as specified.
 
     From specification: 1.0 = exhaustive, < 1.0 = partial
-    Current implementation should cap at 0.99 for paths_explored >= 1000
+    Current implementation uses logarithmic scaling for large path counts:
+    - paths_explored < COVERAGE_EXHAUSTIVE_THRESHOLD (default 1000): coverage = 1.0
+    - paths_explored >= threshold: coverage scales logarithmically from 1.0 to ~0.77
     """
-    code = '''
+    code = """
 def simple_func(x: int) -> int:
     return x * 2
-'''
+"""
 
     result = symbolic_check(code=code, function_name="simple_func", timeout_seconds=5)
 
     # Verify coverage_estimate is a float between 0.0 and 1.0
     coverage = result["coverage_estimate"]
     assert isinstance(coverage, float), "coverage_estimate must be a float"
-    assert 0.0 <= coverage <= 1.0, f"coverage_estimate must be between 0.0 and 1.0, got: {coverage}"
+    assert (
+        0.0 <= coverage <= 1.0
+    ), f"coverage_estimate must be between 0.0 and 1.0, got: {coverage}"
 
-    # If paths_explored < 1000, coverage should be 1.0 (exhaustive)
-    # If paths_explored >= 1000, coverage should be 0.99 (partial but high)
+    # With no contracts, paths_explored is 0, which gives coverage = 1.0 (unknown but treated as exhaustive)
+    # If paths_explored < threshold (default 1000): coverage = 1.0 (exhaustive)
+    # If paths_explored >= threshold: coverage scales logarithmically
     if result["paths_explored"] < 1000:
-        assert coverage == 1.0, f"Exhaustive exploration should have coverage_estimate=1.0, got: {coverage}"
+        assert (
+            coverage == 1.0
+        ), f"Exhaustive exploration (<1000 paths) should have coverage_estimate=1.0, got: {coverage}"
     else:
-        assert coverage == 0.99, f"Large exploration should have coverage_estimate=0.99, got: {coverage}"
+        # With logarithmic scaling, coverage at exactly 1000 paths is still 1.0
+        # At 10000 paths (10x), coverage ≈ 0.94
+        # At 100000 paths (100x), coverage ≈ 0.77
+        assert (
+            0.77 <= coverage < 1.0
+        ), f"Large exploration (>=1000 paths) should have coverage_estimate in [0.77, 1.0), got: {coverage}"
 
 
 def test_no_extra_fields_compliance():
@@ -165,30 +232,31 @@ def test_no_extra_fields_compliance():
 
     This is critical for strict schema compliance.
     """
-    code = '''
+    code = """
 def func(x: int) -> int:
     return x
-'''
+"""
 
     result = symbolic_check(code=code, function_name="func", timeout_seconds=1)
 
     # EXACT fields from Section 4 specification
     allowed_fields = {
-        "status",           # "verified" | "counterexample" | "timeout" | "error"
+        "status",  # "verified" | "counterexample" | "timeout" | "error"
         "counterexamples",  # array of counterexample objects
-        "paths_explored",   # integer
-        "paths_verified",   # integer
-        "time_seconds",     # float
-        "coverage_estimate" # float (1.0 = exhaustive, < 1.0 = partial)
+        "paths_explored",  # integer
+        "paths_verified",  # integer
+        "time_seconds",  # float
+        "coverage_estimate",  # float (1.0 = exhaustive, < 1.0 = partial)
     }
 
     # CRITICAL: No extra fields allowed for strict compliance
     actual_fields = set(result.keys())
     extra_fields = actual_fields - allowed_fields
 
-    assert len(extra_fields) == 0, \
-        f"STRICT SCHEMA VIOLATION: Extra fields found: {extra_fields}. " \
+    assert len(extra_fields) == 0, (
+        f"STRICT SCHEMA VIOLATION: Extra fields found: {extra_fields}. "
         f"Only allowed fields are: {allowed_fields}"
+    )
 
 
 def test_counterexample_structure_exact():
@@ -211,27 +279,29 @@ def divide(x: float, y: float) -> float:
 
         # EXACT counterexample structure from Section 4
         required_structure = {
-            "args": dict,           # {"x": -1.0}
-            "kwargs": dict,         # {}
-            "violation": str,       # "postcondition: result >= 0"
-            "actual_result": str,   # "complex number (nan)"
-            "path_condition": str   # "x < 0"
+            "args": dict,  # {"x": -1.0}
+            "kwargs": dict,  # {}
+            "violation": str,  # "postcondition: result >= 0"
+            "actual_result": str,  # "complex number (nan)"
+            "path_condition": str,  # "x < 0"
         }
 
         # Verify each field has correct type
         for field, expected_type in required_structure.items():
             assert field in ce, f"Missing required field: {field}"
-            assert isinstance(ce[field], expected_type), \
-                f"Field '{field}' must be {expected_type.__name__}, got {type(ce[field]).__name__}"
+            assert isinstance(
+                ce[field], expected_type
+            ), f"Field '{field}' must be {expected_type.__name__}, got {type(ce[field]).__name__}"
 
         # CRITICAL: No extra fields allowed in counterexample
         allowed_ce_fields = set(required_structure.keys())
         actual_ce_fields = set(ce.keys())
         extra_ce_fields = actual_ce_fields - allowed_ce_fields
 
-        assert len(extra_ce_fields) == 0, \
-            f"STRICT SCHEMA VIOLATION: Extra counterexample fields: {extra_ce_fields}. " \
+        assert len(extra_ce_fields) == 0, (
+            f"STRICT SCHEMA VIOLATION: Extra counterexample fields: {extra_ce_fields}. "
             f"Only allowed fields are: {allowed_ce_fields}"
+        )
 
 
 def test_error_status_compliance():
@@ -239,22 +309,33 @@ def test_error_status_compliance():
     Test that error status returns proper schema without extra fields.
     """
     # Code with syntax error to trigger error status
-    code = '''
+    code = """
 def broken_func(x: int)
     return x + 1  # Missing colon in function definition
-'''
+"""
 
     result = symbolic_check(code=code, function_name="broken_func", timeout_seconds=1)
 
-    assert result["status"] == "error", f"Expected error status, got: {result['status']}"
+    assert (
+        result["status"] == "error"
+    ), f"Expected error status, got: {result['status']}"
 
     # Even error responses must have required fields
-    required_fields = ["status", "counterexamples", "paths_explored", "paths_verified", "time_seconds", "coverage_estimate"]
+    required_fields = [
+        "status",
+        "counterexamples",
+        "paths_explored",
+        "paths_verified",
+        "time_seconds",
+        "coverage_estimate",
+    ]
     for field in required_fields:
         assert field in result, f"Missing required field '{field}' in error response"
 
     # Error responses should have empty counterexamples and 0 paths
-    assert result["counterexamples"] == [], "Error responses should have empty counterexamples"
+    assert (
+        result["counterexamples"] == []
+    ), "Error responses should have empty counterexamples"
     assert result["paths_explored"] == 0, "Error responses should have 0 paths_explored"
     assert result["paths_verified"] == 0, "Error responses should have 0 paths_verified"
 
@@ -263,10 +344,10 @@ def test_json_serializable_exact_schema():
     """
     Test that the result is valid JSON with exact schema.
     """
-    code = '''
+    code = """
 def test_func(x: int) -> int:
     return x
-'''
+"""
 
     result = symbolic_check(code=code, function_name="test_func", timeout_seconds=1)
 
@@ -303,7 +384,9 @@ def sqrt_func(x: float) -> float:
         ce = result["counterexamples"][0]
 
         # CRITICAL: actual_result field must be present
-        assert "actual_result" in ce, "CRITICAL: actual_result field is missing from counterexample"
+        assert (
+            "actual_result" in ce
+        ), "CRITICAL: actual_result field is missing from counterexample"
         assert isinstance(ce["actual_result"], str), "actual_result must be a string"
         assert len(ce["actual_result"]) > 0, "actual_result must not be empty"
 
@@ -314,20 +397,24 @@ def test_path_condition_field_present():
 
     This is a critical missing field in current implementation.
     """
-    code = '''
+    code = """
 def conditional_func(x: int) -> int:
     if x < 0:
         return -1
     return x
-'''
+"""
 
-    result = symbolic_check(code=code, function_name="conditional_func", timeout_seconds=10)
+    result = symbolic_check(
+        code=code, function_name="conditional_func", timeout_seconds=10
+    )
 
     if result["status"] == "counterexample" and len(result["counterexamples"]) > 0:
         ce = result["counterexamples"][0]
 
         # CRITICAL: path_condition field must be present
-        assert "path_condition" in ce, "CRITICAL: path_condition field is missing from counterexample"
+        assert (
+            "path_condition" in ce
+        ), "CRITICAL: path_condition field is missing from counterexample"
         assert isinstance(ce["path_condition"], str), "path_condition must be a string"
         # path_condition can be empty if no specific path condition
 
