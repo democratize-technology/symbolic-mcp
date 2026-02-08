@@ -408,12 +408,23 @@ def validate_code(code: str) -> Dict[str, Any]:
 
         # Check for blocked imports
         for node in ast.walk(tree):
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
-                module_name = (
-                    node.names[0].name if isinstance(node, ast.Import) else node.module
-                )
-                if module_name:
-                    base_module = module_name.split(".")[0]
+            if isinstance(node, ast.Import):
+                # Guard against empty names list (defensive programming)
+                if node.names:
+                    module_name = node.names[0].name
+                    if module_name:
+                        base_module = module_name.split(".")[0]
+                        if base_module in BLOCKED_MODULES:
+                            return {
+                                "valid": False,
+                                "error": f"Blocked module: {base_module}",
+                            }
+            elif isinstance(node, ast.ImportFrom):
+                # For ImportFrom, node.module can be None (relative imports)
+                # node.names should not be empty for valid Python syntax,
+                # but we check defensively
+                if node.module and node.names:
+                    base_module = node.module.split(".")[0]
                     if base_module in BLOCKED_MODULES:
                         return {
                             "valid": False,
