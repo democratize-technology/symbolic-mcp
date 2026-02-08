@@ -16,6 +16,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import uuid
 from typing import Any, Dict, List, Optional
 
 from crosshair.core import AnalysisOptionSet
@@ -449,7 +450,9 @@ def _temporary_module(code: str):
         tmp.write(textwrap.dedent(code))
         tmp_path = tmp.name
 
-    module_name = f"mcp_temp_{os.path.basename(tmp_path)[:-3]}"
+    # Use UUID for guaranteed uniqueness across concurrent requests
+    # Previous implementation using os.path.basename() could theoretically collide
+    module_name = f"mcp_temp_{uuid.uuid4().hex}"
 
     try:
         spec = importlib.util.spec_from_file_location(module_name, tmp_path)
