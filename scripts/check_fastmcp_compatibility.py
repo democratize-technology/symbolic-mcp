@@ -397,7 +397,7 @@ class FastMCPCompatibilityChecker:
         print("\n" + "=" * 50)
 
 
-def main():
+def main() -> int:
     """Main function"""
     import argparse
 
