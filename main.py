@@ -283,6 +283,11 @@ COVERAGE_DEGRADATION_FACTOR = 0.23
 # At 100x the exhaustive threshold, coverage drops to ~0.77
 MAX_COVERAGE_SCALE_FACTOR = 100
 
+# Per-path timeout ratio for CrossHair analysis
+# Each path's timeout is this fraction of the total timeout
+# A lower value gives more paths a chance to complete before hitting the overall timeout
+PER_PATH_TIMEOUT_RATIO = 0.1  # 10% of total timeout per path
+
 
 # --- Memory Management ---
 
@@ -847,7 +852,7 @@ class SymbolicAnalyzer:
                 options = AnalysisOptionSet(
                     analysis_kind=[AnalysisKind.asserts, AnalysisKind.PEP316],
                     per_condition_timeout=float(self.timeout),
-                    per_path_timeout=float(self.timeout) / 10.0,
+                    per_path_timeout=float(self.timeout) * PER_PATH_TIMEOUT_RATIO,
                 )
 
                 # Get checkables from analyze_function
