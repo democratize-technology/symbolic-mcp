@@ -1095,6 +1095,48 @@ def _extract_function_signature(
     return f"({', '.join(params)}){return_str}"
 
 
+def _extract_function_signature_and_params(
+    module: types.ModuleType, function_name: str
+) -> tuple[Optional[str], list[str]]:
+    """Extract the signature and parameter names of a function.
+
+    Returns a tuple of (signature_string, parameter_names).
+    signature_string is like '(x: int, y: int) -> int' or None if not found.
+    parameter_names is a list of parameter names (e.g., ['x', 'y']).
+
+    This is more efficient than calling _extract_function_signature() and
+    then inspect.signature() again, as it only calls inspect.signature() once.
+    """
+    if not hasattr(module, function_name):
+        return None, []
+
+    func = getattr(module, function_name)
+    try:
+        sig = inspect.signature(func)
+    except ValueError:
+        return None, []
+
+    # Extract parameter names
+    param_names = list(sig.parameters.keys())
+
+    # Build signature string (reuse logic from _extract_function_signature)
+    params = []
+    for name, param in sig.parameters.items():
+        param_str = name
+        if param.annotation != inspect.Parameter.empty:
+            param_str += f": {param.annotation.__name__ if hasattr(param.annotation, '__name__') else str(param.annotation)}"
+        if param.default != inspect.Parameter.empty:
+            param_str += f" = {repr(param.default)}"
+        params.append(param_str)
+
+    return_str = ""
+    if sig.return_annotation != inspect.Signature.empty:
+        return_str = f" -> {sig.return_annotation.__name__ if hasattr(sig.return_annotation, '__name__') else str(sig.return_annotation)}"
+
+    sig_str = f"({', '.join(params)}){return_str}"
+    return sig_str, param_names
+
+
 def logic_find_path_to_exception(
     code: str, function_name: str, exception_type: str, timeout_seconds: int
 ) -> _ExceptionPathResult:
@@ -1120,37 +1162,29 @@ def logic_find_path_to_exception(
                     "message": f"Function '{function_name}' not found",
                 }
 
-            # Get the function signature
-            func_sig = _extract_function_signature(module, function_name)
+            # Get the function signature and parameter names in one call
+            # This is more efficient than calling _extract_function_signature() and
+            # then inspect.signature() separately
+            func_sig, param_names = _extract_function_signature_and_params(
+                module, function_name
+            )
             if func_sig is None:
                 func_sig = "(*args, **kwargs)"
+                param_names = []
 
             # Create wrapper with explicit signature
             # We use a simple postcondition so CrossHair analyzes the function
-            if not func_sig.startswith("(*"):
-                # Extract parameter names
-                sig = inspect.signature(getattr(module, function_name))
-                param_names = list(sig.parameters.keys())
-                if param_names:
-                    args_str = ", ".join(param_names)
-                    wrapper_code = f"""
+            if param_names:
+                args_str = ", ".join(param_names)
+                wrapper_code = f"""
 {code}
 
 def _exception_hunter_wrapper{func_sig}:
     '''post: True'''
     return {function_name}({args_str})
 """
-                else:
-                    # Fallback for functions with no parameters
-                    wrapper_code = f"""
-{code}
-
-def _exception_hunter_wrapper{func_sig}:
-    '''post: True'''
-    return {function_name}()
-"""
             else:
-                # Fallback for *args, **kwargs signature
+                # Fallback for functions with no parameters or *args/**kwargs
                 wrapper_code = f"""
 {code}
 
@@ -1243,36 +1277,27 @@ def logic_compare_functions(
                     "message": f"Function '{function_b}' not found",
                 }
 
-            # Get function signature for wrapper
-            func_sig = _extract_function_signature(module, function_a)
+            # Get function signature and parameter names for wrapper
+            # Use the efficient helper that returns both in one call
+            func_sig, param_names = _extract_function_signature_and_params(
+                module, function_a
+            )
             if func_sig is None:
                 func_sig = "(*args, **kwargs)"
+                param_names = []
 
             # Create wrapper with explicit signature using postcondition
-            if not func_sig.startswith("(*"):
-                # Extract parameter names
-                sig = inspect.signature(getattr(module, function_a))
-                param_names = list(sig.parameters.keys())
-                if param_names:
-                    args_str = ", ".join(param_names)
-                    wrapper_code = f"""
+            if param_names:
+                args_str = ", ".join(param_names)
+                wrapper_code = f"""
 {code}
 
 def _equivalence_check{func_sig}:
     '''post: {function_a}(_) == {function_b}(_)'''
     return {function_a}({args_str})
 """
-                else:
-                    # Fallback for functions with no parameters
-                    wrapper_code = f"""
-{code}
-
-def _equivalence_check{func_sig}:
-    '''post: {function_a}(_) == {function_b}(_)'''
-    return {function_a}()
-"""
             else:
-                # Fallback for *args, **kwargs signature
+                # Fallback for functions with no parameters or *args/**kwargs
                 wrapper_code = f"""
 {code}
 
