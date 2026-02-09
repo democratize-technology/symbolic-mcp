@@ -11,7 +11,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 
 class FastMCPCompatibilityChecker:
@@ -28,7 +28,7 @@ class FastMCPCompatibilityChecker:
             "test_results": {},
         }
 
-    def check_fastmcp_installation(self) -> Dict[str, str]:
+    def check_fastmcp_installation(self) -> dict[str, str]:
         """Check FastMCP installation and version"""
         try:
             import fastmcp
@@ -43,7 +43,7 @@ class FastMCPCompatibilityChecker:
         except ImportError:
             return {"installed": False, "version": None, "location": None}
 
-    def check_version_compatibility(self, version: str) -> Tuple[str, List[str]]:
+    def check_version_compatibility(self, version: str) -> tuple[str, list[str]]:
         """Check if FastMCP version is compatible"""
         try:
             from packaging import version as pkg_version
@@ -67,7 +67,7 @@ class FastMCPCompatibilityChecker:
         except Exception as e:
             return "error", [f"Version comparison failed: {e}"]
 
-    def check_api_compatibility(self) -> Dict[str, Dict[str, bool]]:
+    def check_api_compatibility(self) -> dict[str, dict[str, bool]]:
         """Check FastMCP API compatibility"""
         api_checks = {}
 
@@ -112,7 +112,7 @@ class FastMCPCompatibilityChecker:
 
         return api_checks
 
-    def check_import_compatibility(self) -> Dict[str, bool]:
+    def check_import_compatibility(self) -> dict[str, bool]:
         """Check critical FastMCP imports"""
         imports_to_check = [
             "fastmcp",
@@ -143,7 +143,7 @@ class FastMCPCompatibilityChecker:
 
     def check_dependencies_compatibility(
         self,
-    ) -> Dict[str, Dict[str, Union[str, bool, None]]]:
+    ) -> dict[str, dict[str, str | bool | None]]:
         """Check FastMCP dependencies compatibility"""
         dependency_checks = {}
 
@@ -174,7 +174,7 @@ class FastMCPCompatibilityChecker:
 
         return dependency_checks
 
-    def run_compatibility_tests(self) -> Dict[str, bool]:
+    def run_compatibility_tests(self) -> dict[str, bool]:
         """Run basic FastMCP compatibility tests"""
         test_results = {}
 
@@ -231,7 +231,7 @@ class FastMCPCompatibilityChecker:
 
         return test_results
 
-    def generate_recommendations(self, compatibility_results: Dict) -> List[str]:
+    def generate_recommendations(self, compatibility_results: dict) -> list[str]:
         """Generate upgrade/recommendation suggestions"""
         recommendations = []
 
@@ -295,7 +295,7 @@ class FastMCPCompatibilityChecker:
 
         return recommendations
 
-    def run_full_compatibility_check(self) -> Dict[str, Any]:
+    def run_full_compatibility_check(self) -> dict[str, Any]:
         """Run comprehensive compatibility check"""
         results = self.compatibility_results.copy()
 
@@ -323,7 +323,7 @@ class FastMCPCompatibilityChecker:
 
         return results
 
-    def print_report(self, results: Dict[str, Any]) -> None:
+    def print_report(self, results: dict[str, Any]) -> None:
         """Print formatted compatibility report"""
         print("🔍 FastMCP 2.0 Compatibility Report")
         print("=" * 50)

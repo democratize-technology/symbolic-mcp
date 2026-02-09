@@ -10,7 +10,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 def run_command(cmd: str, description: str, check: bool = True) -> bool:
