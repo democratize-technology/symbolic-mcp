@@ -32,9 +32,10 @@ According to Section 5.3, these tests must demonstrate that symbolic
 execution can prove that exceptions are unreachable or find paths to exceptions.
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add the project root to Python path for imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
@@ -58,22 +59,24 @@ class TestUnreachableException:
         This is the EXACT test case from Section 5.3 of the specification.
         """
         # This is the EXACT code from Section 5.3 specification
-        code = '''
+        code = """
 def safe_div(a: int, b: int) -> float:
     if b == 0:
         return 0.0
     return a / b
-'''
+"""
 
         result = find_path_to_exception(
             code=code,
             function_name="safe_div",
             exception_type="ZeroDivisionError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # Expected result based on Section 5.3 specification
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_assertion_cannot_fail(self):
         """
@@ -95,11 +98,14 @@ def safe_index_access(arr: list, idx: int) -> int:
             code=code,
             function_name="safe_index_access",
             exception_type="AssertionError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # The assertion should be proven unreachable
-        assert result["status"] in ["unreachable", "verified"], f"Expected 'unreachable' or 'verified', got {result['status']}"
+        assert result["status"] in [
+            "unreachable",
+            "verified",
+        ], f"Expected 'unreachable' or 'verified', got {result['status']}"
 
     def test_proves_bounds_check_prevents_exception(self):
         """
@@ -119,11 +125,13 @@ def safe_array_access(data: list, index: int) -> int:
             code=code,
             function_name="safe_array_access",
             exception_type="IndexError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # IndexError should be unreachable due to bounds checking
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_type_check_prevents_exception(self):
         """
@@ -142,11 +150,13 @@ def safe_math_operation(x) -> float:
             code=code,
             function_name="safe_math_operation",
             exception_type="TypeError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # TypeError should be unreachable due to type checking
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_division_by_zero_prevented(self):
         """
@@ -167,11 +177,13 @@ def calculate_average(numbers: list) -> float:
             code=code,
             function_name="calculate_average",
             exception_type="ZeroDivisionError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # ZeroDivisionError should be unreachable
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_finds_path_to_key_error(self):
         """
@@ -187,11 +199,13 @@ def unsafe_dict_access(data: dict, key: str) -> int:
             code=code,
             function_name="unsafe_dict_access",
             exception_type="KeyError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # Should find that KeyError is reachable
-        assert result["status"] == "reachable", f"Expected 'reachable', got {result['status']}"
+        assert (
+            result["status"] == "reachable"
+        ), f"Expected 'reachable', got {result['status']}"
 
     def test_proves_modulo_by_zero_prevented(self):
         """
@@ -209,11 +223,13 @@ def safe_modulo(a: int, b: int) -> int:
             code=code,
             function_name="safe_modulo",
             exception_type="ZeroDivisionError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # ZeroDivisionError should be unreachable
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_conversion_error_prevented(self):
         """
@@ -232,11 +248,13 @@ def safe_string_to_int(s: str) -> int:
             code=code,
             function_name="safe_string_to_int",
             exception_type="ValueError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # ValueError should be unreachable due to exception handling
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_memory_error_prevented_with_limits(self):
         """
@@ -255,11 +273,13 @@ def safe_large_array_creation(size: int) -> list:
             code=code,
             function_name="safe_large_array_creation",
             exception_type="MemoryError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # MemoryError should be unreachable with size limits
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_recursion_limit_prevented(self):
         """
@@ -280,11 +300,13 @@ def safe_recursive_sum(n: int, depth: int = 0) -> int:
             code=code,
             function_name="safe_recursive_sum",
             exception_type="RecursionError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # RecursionError should be unreachable with depth tracking
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_file_operation_errors_prevented(self):
         """
@@ -304,11 +326,13 @@ def safe_file_read(filename: str) -> str:
             code=code,
             function_name="safe_file_read",
             exception_type="FileNotFoundError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # FileNotFoundError should be unreachable due to exception handling
-        assert result["status"] == "unreachable", f"Expected 'unreachable', got {result['status']}"
+        assert (
+            result["status"] == "unreachable"
+        ), f"Expected 'unreachable', got {result['status']}"
 
     def test_proves_overflow_prevented_with_checks(self):
         """
@@ -327,11 +351,14 @@ def safe_multiply(a: int, b: int) -> int:
             code=code,
             function_name="safe_multiply",
             exception_type="OverflowError",
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         # OverflowError should be unreachable with proper checks
-        assert result["status"] in ["unreachable", "verified"], f"Expected 'unreachable' or 'verified', got {result['status']}"
+        assert result["status"] in [
+            "unreachable",
+            "verified",
+        ], f"Expected 'unreachable' or 'verified', got {result['status']}"
 
 
 class TestErrorHandling:
@@ -341,39 +368,66 @@ class TestErrorHandling:
 
     def test_handles_missing_function_real(self):
         """Test missing function handling without mocks."""
-        code = '''
+        code = """
 def existing_function(x: int) -> int:
     return x
-'''
+"""
 
-        result = find_path_to_exception(code=code, function_name="missing_function", exception_type="ValueError", timeout_seconds=30)
+        result = find_path_to_exception(
+            code=code,
+            function_name="missing_function",
+            exception_type="ValueError",
+            timeout_seconds=30,
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
-        assert "NameError" in result.get("error_type", ""), f"Expected NameError, got {result.get('error_type')}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
+        assert "NameError" in result.get(
+            "error_type", ""
+        ), f"Expected NameError, got {result.get('error_type')}"
 
     def test_handles_syntax_error_real(self):
         """Test syntax error handling without mocks."""
-        code = '''
+        code = """
 def bad_function(y: int) -> int
     return y  # Missing colon
-'''
+"""
 
-        result = find_path_to_exception(code=code, function_name="bad_function", exception_type="ValueError", timeout_seconds=30)
+        result = find_path_to_exception(
+            code=code,
+            function_name="bad_function",
+            exception_type="ValueError",
+            timeout_seconds=30,
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
-        assert "SyntaxError" in result.get("error_type", ""), f"Expected SyntaxError, got {result.get('error_type')}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
+        assert "SyntaxError" in result.get(
+            "error_type", ""
+        ), f"Expected SyntaxError, got {result.get('error_type')}"
 
     def test_handles_sandbox_violation_real(self):
         """Test sandbox violation handling without mocks."""
-        code = '''
+        code = """
 def restricted_function():
     import os  # Blocked import
     return os.getcwd()
-'''
+"""
 
-        result = find_path_to_exception(code=code, function_name="restricted_function", exception_type="ValueError", timeout_seconds=30)
+        result = find_path_to_exception(
+            code=code,
+            function_name="restricted_function",
+            exception_type="ValueError",
+            timeout_seconds=30,
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
         # The sandbox should block the os module import
         error_msg = result.get("message", "").lower()
-        assert "blocked" in error_msg or "sandbox" in error_msg or "import" in error_msg, f"Expected import/sandbox error, got: {error_msg}"
+        assert (
+            "blocked" in error_msg or "sandbox" in error_msg or "import" in error_msg
+        ), f"Expected import/sandbox error, got: {error_msg}"

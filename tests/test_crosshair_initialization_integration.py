@@ -38,9 +38,10 @@ SOLUTION IMPLEMENTED:
 - This prevents the "Opcode patches haven't been loaded yet" error for all usage
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add the project root to Python path for imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
@@ -53,13 +54,15 @@ def test_crosshair_opcode_patches_initialized():
     This test verifies the CRITICAL FIX for the "Opcode patches haven't been loaded yet" error.
     """
     # Import main module - this should trigger global CrossHair initialization
-    import main
-
     # Verify that CrossHair core has opcode patches loaded
     from crosshair.core import _OPCODE_PATCHES
 
+    import main
+
     # CRITICAL VERIFICATION: Opcode patches must be loaded
-    assert len(_OPCODE_PATCHES) > 0, f"Expected opcode patches to be loaded, got {len(_OPCODE_PATCHES)}"
+    assert (
+        len(_OPCODE_PATCHES) > 0
+    ), f"Expected opcode patches to be loaded, got {len(_OPCODE_PATCHES)}"
 
     print(f"✅ CrossHair initialization: {len(_OPCODE_PATCHES)} opcode patches loaded")
 
@@ -82,14 +85,21 @@ def simple_abs(x: int) -> int:
     return abs(x)
 '''
 
-    result = logic_symbolic_check(code=code, function_name="simple_abs", timeout_seconds=10)
+    result = logic_symbolic_check(
+        code=code, function_name="simple_abs", timeout_seconds=10
+    )
 
     # The analysis should complete without the "Opcode patches haven't been loaded yet" error
-    assert result["status"] != "error", f"Expected analysis to complete, got error: {result.get('message')}"
+    assert (
+        result["status"] != "error"
+    ), f"Expected analysis to complete, got error: {result.get('message')}"
 
     # Should return a valid status (verified, counterexample, or timeout)
-    assert result["status"] in ["verified", "counterexample", "timeout"], \
-        f"Expected valid status, got {result['status']}"
+    assert result["status"] in [
+        "verified",
+        "counterexample",
+        "timeout",
+    ], f"Expected valid status, got {result['status']}"
 
     print(f"✅ CrossHair symbolic execution works: status={result['status']}")
 
@@ -114,11 +124,14 @@ def buggy_max(x: int, y: int) -> int:
         return y  # Bug: should return x when x == y
 '''
 
-    result = logic_symbolic_check(code=code, function_name="buggy_max", timeout_seconds=10)
+    result = logic_symbolic_check(
+        code=code, function_name="buggy_max", timeout_seconds=10
+    )
 
     # CrossHair should find a counterexample for the case x == y
-    assert result["status"] == "counterexample", \
-        f"Expected counterexample for buggy function, got {result['status']}"
+    assert (
+        result["status"] == "counterexample"
+    ), f"Expected counterexample for buggy function, got {result['status']}"
 
     print(f"✅ CrossHair successfully found counterexample: {result['status']}")
 
@@ -151,7 +164,9 @@ def identity(x: int) -> int:
     assert result1["status"] != "error", f"Analyzer1 failed: {result1.get('message')}"
     assert result2["status"] != "error", f"Analyzer2 failed: {result2.get('message')}"
 
-    print(f"✅ Multiple SymbolicAnalyzer instances work: {result1['status']}, {result2['status']}")
+    print(
+        f"✅ Multiple SymbolicAnalyzer instances work: {result1['status']}, {result2['status']}"
+    )
 
 
 if __name__ == "__main__":
@@ -163,4 +178,6 @@ if __name__ == "__main__":
     test_multiple_symbolic_analyzer_instances()
 
     print("\n🎉 All CrossHair initialization tests PASSED!")
-    print("✅ CRITICAL BUG FIX VERIFIED: 'Opcode patches haven't been loaded yet' error is FIXED")
+    print(
+        "✅ CRITICAL BUG FIX VERIFIED: 'Opcode patches haven't been loaded yet' error is FIXED"
+    )

@@ -65,9 +65,9 @@ def simple_function(x: int) -> int:
         )
 
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 1, (
-            f"Expected complexity 1, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 1
+        ), f"Expected complexity 1, got {result['cyclomatic_complexity']}"
 
     def test_single_if_complexity(self):
         """Single if statement: complexity = 1 (base) + 1 (if) = 2."""
@@ -82,9 +82,9 @@ def single_if(x: int) -> int:
         )
 
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 2, (
-            f"Expected complexity 2, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 2
+        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
 
     def test_if_elif_chain_complexity(self):
         """
@@ -147,9 +147,9 @@ def nested_if(x: int, y: int) -> int:
 
         # Complexity = 1 (base) + 2 (two if statements) = 3
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 3, (
-            f"Expected complexity 3, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 3
+        ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
 
     def test_while_loop_complexity(self):
         """While loop adds one decision point."""
@@ -167,9 +167,9 @@ def while_loop(n: int) -> int:
 
         # Complexity = 1 (base) + 1 (while) = 2
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 2, (
-            f"Expected complexity 2, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 2
+        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
 
     def test_for_loop_complexity(self):
         """For loop adds one decision point."""
@@ -186,9 +186,9 @@ def for_loop(items: list) -> int:
 
         # Complexity = 1 (base) + 1 (for) = 2
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 2, (
-            f"Expected complexity 2, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 2
+        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
 
     def test_boolop_and_complexity(self):
         """
@@ -208,9 +208,9 @@ def boolop_and(x: int, y: int, z: int) -> bool:
 
         # Complexity = 1 (base) + 1 (if) + 2 (BoolOp with 3 values has 2 additional operands) = 4
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 4, (
-            f"Expected complexity 4, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 4
+        ), f"Expected complexity 4, got {result['cyclomatic_complexity']}"
 
     def test_boolop_or_complexity(self):
         """BoolOp with 'or' adds complexity for each additional operand."""
@@ -226,9 +226,9 @@ def boolop_or(x: int, y: int) -> bool:
 
         # Complexity = 1 (base) + 1 (if) + 1 (BoolOp with 2 values has 1 additional operand) = 3
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 3, (
-            f"Expected complexity 3, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 3
+        ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
 
     def test_complex_function_complexity(self):
         """Complex function with multiple decision point types."""
@@ -263,9 +263,9 @@ def complex_function(items: list, x: int) -> int:
         # - 1 BoolOp (2 values, 1 additional operand)
         # Total: 1 (base) + 6 = 7
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 7, (
-            f"Expected complexity 7, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 7
+        ), f"Expected complexity 7, got {result['cyclomatic_complexity']}"
 
     def test_elif_without_else_complexity(self):
         """if/elif chain without else."""
@@ -283,9 +283,9 @@ def if_elif_no_else(x: int) -> int:
 
         # Complexity = 1 (base) + 2 (if + 1 elif) = 3
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 3, (
-            f"Expected complexity 3, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 3
+        ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
 
     def test_multiple_boolops_in_if(self):
         """Multiple BoolOps should each add complexity."""
@@ -306,9 +306,9 @@ def multiple_boolops(x: int, y: int, z: int) -> bool:
         # - 1 BoolOp (z or z) -> 1 additional operand
         # Total: 1 (base) + 4 = 5
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 5, (
-            f"Expected complexity 5, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 5
+        ), f"Expected complexity 5, got {result['cyclomatic_complexity']}"
 
     def test_if_with_else_no_elif(self):
         """Simple if/else without elif."""
@@ -325,6 +325,6 @@ def if_else(x: int) -> int:
 
         # Complexity = 1 (base) + 1 (if) = 2 (else doesn't add complexity)
         assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 2, (
-            f"Expected complexity 2, got {result['cyclomatic_complexity']}"
-        )
+        assert (
+            result["cyclomatic_complexity"] == 2
+        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"

@@ -63,6 +63,7 @@ def test_integer_parsing_with_try_except():
     """
     Test the recommended fix: use try/except directly around int() conversion.
     """
+
     def safe_parse_int(val: str):
         """Safely parse an integer, returning None if not parseable."""
         try:
@@ -95,6 +96,7 @@ def test_integer_parsing_edge_cases():
     """
     Test edge cases for integer parsing.
     """
+
     def safe_parse_int(val: str):
         """Safely parse an integer, returning None if not parseable."""
         try:

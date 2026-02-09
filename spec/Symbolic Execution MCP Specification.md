@@ -2,9 +2,9 @@
 <!-- Copyright (c) 2025 Symbolic MCP Contributors -->
 # Symbolic Execution MCP Server Specification
 
-**Version:** 1.0  
-**Target Framework:** FastMCP 2.0 (Python)  
-**Core Library:** CrossHair (`crosshair-tool`)  
+**Version:** 1.0
+**Target Framework:** FastMCP 2.0 (Python)
+**Core Library:** CrossHair (`crosshair-tool`)
 **Classification:** Empirical Verification / Path-Sensitive Analysis
 
 ---
@@ -77,7 +77,7 @@ class RestrictedImporter:
     Controls what modules can be imported during symbolic execution.
     Installs as a meta path finder.
     """
-    
+
     BLOCKED_MODULES = frozenset({
         'os', 'sys', 'subprocess', 'shutil', 'pathlib',
         'socket', 'http', 'urllib', 'requests', 'ftplib',
@@ -86,7 +86,7 @@ class RestrictedImporter:
         'importlib', 'runpy',
         'code', 'codeop', 'pty', 'tty',
     })
-    
+
     ALLOWED_MODULES = frozenset({
         'math', 'random', 'string', 'collections', 'itertools',
         'functools', 'operator', 'typing', 're', 'json',
@@ -94,23 +94,23 @@ class RestrictedImporter:
         'dataclasses', 'enum', 'copy', 'heapq', 'bisect',
         'typing_extensions', 'abc',
     })
-    
+
     @classmethod
     def install(cls):
         """Install the restricted importer as a meta path finder."""
         sys.meta_path.insert(0, cls())
-    
+
     @classmethod
     def uninstall(cls):
         """Remove the restricted importer."""
         sys.meta_path = [f for f in sys.meta_path if not isinstance(f, cls)]
-    
+
     def find_module(self, fullname: str, path=None):
         base_module = fullname.split('.')[0]
         if base_module in self.BLOCKED_MODULES:
             return self  # Return self to handle the import (and block it)
         return None  # Let normal import proceed
-    
+
     def load_module(self, fullname: str):
         raise ImportError(f"Import of '{fullname}' is blocked in symbolic execution sandbox")
 ```
@@ -336,10 +336,10 @@ from typing import Any
 
 class SymbolicAnalyzer:
     """Wraps CrossHair for MCP tool usage."""
-    
+
     def __init__(self, timeout_seconds: int = 30):
         self.timeout = timeout_seconds
-    
+
     def check_function(
         self,
         code: str,
@@ -347,7 +347,7 @@ class SymbolicAnalyzer:
     ) -> dict[str, Any]:
         """
         Symbolically check a function against its contracts.
-        
+
         Returns structured results compatible with MCP tool output.
         """
         # Parse and compile the code
@@ -360,7 +360,7 @@ class SymbolicAnalyzer:
                 "message": str(e),
                 "line": e.lineno
             }
-        
+
         # Create a module namespace and execute the code
         namespace: dict[str, Any] = {}
         try:
@@ -380,7 +380,7 @@ class SymbolicAnalyzer:
             }
         finally:
             RestrictedImporter.uninstall()
-        
+
         # Get the function
         if function_name not in namespace:
             return {
@@ -388,21 +388,21 @@ class SymbolicAnalyzer:
                 "error_type": "NameError",
                 "message": f"Function '{function_name}' not found in code"
             }
-        
+
         func = namespace[function_name]
-        
+
         # Configure CrossHair analysis
         options = AnalysisOptions(
             max_iterations=1000,
             per_condition_timeout=self.timeout,
             per_path_timeout=self.timeout / 10,
         )
-        
+
         # Run analysis
         counterexamples = []
         paths_explored = 0
         paths_verified = 0
-        
+
         try:
             for message in analyze_function(func, options):
                 paths_explored += 1
@@ -423,7 +423,7 @@ class SymbolicAnalyzer:
                 "paths_verified": paths_verified,
                 "coverage_estimate": min(paths_explored / 1000, 0.99)
             }
-        
+
         return {
             "status": "counterexample" if counterexamples else "verified",
             "counterexamples": counterexamples,
@@ -486,7 +486,7 @@ Create `tests/` directory with **pytest**:
        code = '''
    def impl_a(x: int) -> int:
        return x * 2
-   
+
    def impl_b(x: int) -> int:
        return x + x if x != 0 else 1  # Bug: wrong for x=0
    '''

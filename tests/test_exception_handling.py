@@ -32,7 +32,9 @@ class TestExtractFunctionSignature:
         for func_name in value_error_builtins:
             result = _extract_function_signature(builtins, func_name)
             # Should return None to trigger fallback to "(*args, **kwargs)"
-            assert result is None, f"Expected None for builtin {func_name}, got {result}"
+            assert (
+                result is None
+            ), f"Expected None for builtin {func_name}, got {result}"
 
         # Verify that builtins with valid signatures still work
         # This ensures the fix doesn't break normal function handling
@@ -40,8 +42,12 @@ class TestExtractFunctionSignature:
         for func_name in valid_sig_builtins:
             result = _extract_function_signature(builtins, func_name)
             # These should return a signature string
-            assert result is not None, f"Expected signature for builtin {func_name}, got None"
-            assert isinstance(result, str), f"Expected str for builtin {func_name}, got {type(result)}"
+            assert (
+                result is not None
+            ), f"Expected signature for builtin {func_name}, got None"
+            assert isinstance(
+                result, str
+            ), f"Expected str for builtin {func_name}, got {type(result)}"
 
     def test_normal_function_returns_signature(self):
         """Test that normal Python functions return their signature."""
@@ -121,4 +127,6 @@ class TestExtractFunctionSignature:
             if hasattr(builtins, func_name):
                 result = _extract_function_signature(builtins, func_name)
                 # These should return None since inspect.signature raises ValueError
-                assert result is None, f"Expected None for C builtin {func_name}, got {result}"
+                assert (
+                    result is None
+                ), f"Expected None for C builtin {func_name}, got {result}"

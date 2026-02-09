@@ -102,7 +102,9 @@ class TestFastMCPSecurityConfiguration:
         The lifespan handler ensures proper cleanup of resources like
         temporary modules, preventing memory leaks in long-running processes.
         """
-        assert hasattr(mcp, "_lifespan"), "FastMCP instance should have _lifespan attribute"
+        assert hasattr(
+            mcp, "_lifespan"
+        ), "FastMCP instance should have _lifespan attribute"
         assert mcp._lifespan is not None, "lifespan should be configured for cleanup"
 
     def test_tools_are_registered(self) -> None:

@@ -32,9 +32,10 @@ According to Section 5.3, these tests must demonstrate that symbolic
 execution finds bugs that random testing would miss.
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add the project root to Python path for imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
@@ -74,8 +75,12 @@ def tricky(x: int, y: int) -> int:
         result = symbolic_check(code=code, function_name="tricky", timeout_seconds=30)
 
         # Expected result based on Section 5.3 specification
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
         # The counterexample should contain the specific values from Section 5.3
         ce = result["counterexamples"][0]
@@ -95,10 +100,16 @@ def tricky(x: int, y: int) -> int:
             found_needle = True
 
         # Also check the violation message for the needle condition
-        if "-1" in violation_str or "post" in violation_str or "needle" in violation_str:
+        if (
+            "-1" in violation_str
+            or "post" in violation_str
+            or "needle" in violation_str
+        ):
             found_needle = True
 
-        assert found_needle, f"Expected counterexample to find the needle (x=12345, y=86418), got {ce}"
+        assert (
+            found_needle
+        ), f"Expected counterexample to find the needle (x=12345, y=86418), got {ce}"
 
     def test_finds_boundary_condition_bug_random_testing_misses(self):
         """
@@ -130,8 +141,12 @@ def is_prime(n: int) -> bool:
 
         result = symbolic_check(code=code, function_name="is_prime", timeout_seconds=30)
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
         # Should find the specific large prime bug
         found_target_bug = False
@@ -155,10 +170,16 @@ def multiplication_safe(a: int, b: int) -> int:
     return a * b
 '''
 
-        result = symbolic_check(code=code, function_name="multiplication_safe", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="multiplication_safe", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
         # Should find overflow conditions with large numbers
         found_overflow = False
@@ -166,15 +187,17 @@ def multiplication_safe(a: int, b: int) -> int:
             # Look for large numbers that would cause overflow
             args = ce.get("args", {})
             if isinstance(args, dict):
-                a_val = args.get('a', 0)
-                b_val = args.get('b', 0)
+                a_val = args.get("a", 0)
+                b_val = args.get("b", 0)
                 # Large positive numbers that would overflow
                 if isinstance(a_val, int) and isinstance(b_val, int):
                     if abs(a_val) > 1000000 or abs(b_val) > 1000000:
                         found_overflow = True
                         break
 
-        assert found_overflow, "Expected to find overflow counterexample with large numbers"
+        assert (
+            found_overflow
+        ), "Expected to find overflow counterexample with large numbers"
 
     def test_finds_precision_bug_floating_point_random_testing_misses(self):
         """
@@ -188,10 +211,16 @@ def precise_division(numerator: float, denominator: float) -> float:
     return numerator / denominator
 '''
 
-        result = symbolic_check(code=code, function_name="precise_division", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="precise_division", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
         # Should find precision issues with certain floating point values
         found_precision_issue = False
@@ -201,7 +230,9 @@ def precise_division(numerator: float, denominator: float) -> float:
                 found_precision_issue = True
                 break
 
-        assert found_precision_issue, "Expected to find floating-point precision counterexample"
+        assert (
+            found_precision_issue
+        ), "Expected to find floating-point precision counterexample"
 
 
 class TestEdgeCaseBugDetection:
@@ -229,10 +260,16 @@ def calculate_discount(price: int, quantity: int) -> int:
     return total
 '''
 
-        result = symbolic_check(code=code, function_name="calculate_discount", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="calculate_discount", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
         # Should find the very specific edge case
         found_specific_case = False
@@ -242,7 +279,9 @@ def calculate_discount(price: int, quantity: int) -> int:
                 found_specific_case = True
                 break
 
-        assert found_specific_case, "Expected to find the specific edge case counterexample"
+        assert (
+            found_specific_case
+        ), "Expected to find the specific edge case counterexample"
 
     def test_finds_logical_contradiction_in_complex_conditions(self):
         """
@@ -265,10 +304,16 @@ def complex_validation(x: int, y: int, z: int) -> str:
         return "normal"
 '''
 
-        result = symbolic_check(code=code, function_name="complex_validation", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="complex_validation", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
         # Should find the None return bug
         found_none_bug = False
@@ -278,7 +323,9 @@ def complex_validation(x: int, y: int, z: int) -> str:
                 found_none_bug = True
                 break
 
-        assert found_none_bug, "Expected to find counterexample that violates return type"
+        assert (
+            found_none_bug
+        ), "Expected to find counterexample that violates return type"
 
 
 class TestMathematicalPropertyViolations:
@@ -301,10 +348,16 @@ def buggy_commutative_op(a: int, b: int) -> int:
     return a + b
 '''
 
-        result = symbolic_check(code=code, function_name="buggy_commutative_op", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="buggy_commutative_op", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
     def test_finds_associativity_violation(self):
         """
@@ -320,10 +373,16 @@ def buggy_associative_op(a: int, b: int, c: int) -> int:
     return a + b + c
 '''
 
-        result = symbolic_check(code=code, function_name="buggy_associative_op", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="buggy_associative_op", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
 
 class TestRealWorldBugPatterns:
@@ -348,10 +407,16 @@ def array_access_mimic(index: int, arr_length: int) -> int:
     return -1
 '''
 
-        result = symbolic_check(code=code, function_name="array_access_mimic", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="array_access_mimic", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
     def test_finds_resource_leak_pattern(self):
         """
@@ -367,10 +432,16 @@ def resource_tracker(acquire_count: int, release_count: int) -> int:
     return acquire_count - release_count
 '''
 
-        result = symbolic_check(code=code, function_name="resource_tracker", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="resource_tracker", timeout_seconds=30
+        )
 
-        assert result["status"] == "counterexample", f"Expected counterexample, got {result['status']}"
-        assert len(result["counterexamples"]) >= 1, "Expected at least one counterexample"
+        assert (
+            result["status"] == "counterexample"
+        ), f"Expected counterexample, got {result['status']}"
+        assert (
+            len(result["counterexamples"]) >= 1
+        ), "Expected at least one counterexample"
 
 
 class TestErrorHandling:
@@ -382,31 +453,49 @@ class TestErrorHandling:
         """Test syntax error handling without mocks."""
         code = "def bad_syntax(x, y) return x + y"  # Missing colon
 
-        result = symbolic_check(code=code, function_name="bad_syntax", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="bad_syntax", timeout_seconds=30
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
-        assert "SyntaxError" in result.get("error_type", ""), f"Expected SyntaxError, got {result.get('error_type')}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
+        assert "SyntaxError" in result.get(
+            "error_type", ""
+        ), f"Expected SyntaxError, got {result.get('error_type')}"
 
     def test_handles_function_not_found_real(self):
         """Test missing function handling without mocks."""
         code = "def existing_function(x): return x"
 
-        result = symbolic_check(code=code, function_name="missing_function", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="missing_function", timeout_seconds=30
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
-        assert "NameError" in result.get("error_type", ""), f"Expected NameError, got {result.get('error_type')}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
+        assert "NameError" in result.get(
+            "error_type", ""
+        ), f"Expected NameError, got {result.get('error_type')}"
 
     def test_handles_sandbox_violation_real(self):
         """Test sandbox violation handling without mocks."""
-        code = '''
+        code = """
 import os
 def restricted_function():
     return os.getcwd()
-'''
+"""
 
-        result = symbolic_check(code=code, function_name="restricted_function", timeout_seconds=30)
+        result = symbolic_check(
+            code=code, function_name="restricted_function", timeout_seconds=30
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
         # The sandbox should block the os module import
         error_msg = result.get("message", "").lower()
-        assert "blocked" in error_msg or "sandbox" in error_msg or "import" in error_msg, f"Expected import/sandbox error, got: {error_msg}"
+        assert (
+            "blocked" in error_msg or "sandbox" in error_msg or "import" in error_msg
+        ), f"Expected import/sandbox error, got: {error_msg}"

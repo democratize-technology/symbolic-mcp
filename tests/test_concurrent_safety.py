@@ -65,12 +65,9 @@ def add(a: int, b: int) -> int:
                 exceptions.append(e)
 
         # Execute threads concurrently
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_threads
-        ) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = [
-                executor.submit(create_and_use_module, i)
-                for i in range(num_threads)
+                executor.submit(create_and_use_module, i) for i in range(num_threads)
             ]
             concurrent.futures.wait(futures)
 
@@ -110,31 +107,26 @@ def multiply(x: int, y: int) -> int:
 
             except KeyError as e:
                 # KeyError would indicate the race condition bug
-                exceptions.append(
-                    TypeError(f"Race condition detected: KeyError {e}")
-                )
+                exceptions.append(TypeError(f"Race condition detected: KeyError {e}"))
             except Exception as e:
                 # Other exceptions are logged but not considered test failures
                 # if they're from CrossHair itself
                 exceptions.append(e)
 
         # Execute concurrent analyses
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_threads
-        ) as executor:
-            futures = [
-                executor.submit(run_analysis, i) for i in range(num_threads)
-            ]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(run_analysis, i) for i in range(num_threads)]
             concurrent.futures.wait(futures)
 
         # The key assertion: no KeyError (race condition) should occur
         race_condition_errors = [
-            e for e in exceptions if isinstance(e, TypeError)
-            and "Race condition" in str(e)
+            e
+            for e in exceptions
+            if isinstance(e, TypeError) and "Race condition" in str(e)
         ]
-        assert len(race_condition_errors) == 0, (
-            f"Race condition detected: {race_condition_errors}"
-        )
+        assert (
+            len(race_condition_errors) == 0
+        ), f"Race condition detected: {race_condition_errors}"
         assert len(results) == num_threads
         # Verify all results have a status field (i.e., didn't crash in _temporary_module)
         assert all("status" in r for r in results)
@@ -199,12 +191,8 @@ def dummy(x: int) -> int:
             with main._temporary_module(test_code):
                 pass  # Module exists here
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_threads
-        ) as executor:
-            futures = [
-                executor.submit(create_module, i) for i in range(num_threads)
-            ]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(create_module, i) for i in range(num_threads)]
             concurrent.futures.wait(futures)
 
         # Give cleanup a moment to complete
@@ -250,12 +238,9 @@ def broken():
                 # Should not get KeyError or other unexpected exceptions
                 pass
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_threads
-        ) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = [
-                executor.submit(try_load_broken_module, i)
-                for i in range(num_threads)
+                executor.submit(try_load_broken_module, i) for i in range(num_threads)
             ]
             concurrent.futures.wait(futures)
 
@@ -327,20 +312,16 @@ def divide(x: int, y: int) -> float:
             )
             results.append(result)
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=num_threads
-        ) as executor:
-            futures = [
-                executor.submit(find_exception, i) for i in range(num_threads)
-            ]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(find_exception, i) for i in range(num_threads)]
             concurrent.futures.wait(futures)
 
         assert len(results) == num_threads
         # All should complete successfully (found, unreachable, or unknown are acceptable)
         # The key is that no KeyError or other exceptions occurred
-        assert all(r["status"] in ("found", "unreachable", "unknown", "error") for r in results), (
-            f"Unexpected statuses: {[r['status'] for r in results]}"
-        )
+        assert all(
+            r["status"] in ("found", "unreachable", "unknown", "error") for r in results
+        ), f"Unexpected statuses: {[r['status'] for r in results]}"
 
 
 class TestSysModulesLockAttributes:

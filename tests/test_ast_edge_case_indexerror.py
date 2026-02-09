@@ -72,7 +72,15 @@ def test_import_with_empty_names_list_ast_manipulation():
     # Add a dummy function to make it a valid module
     func_def = ast.FunctionDef(
         name="foo",
-        args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[], kwarg=None, vararg=None),
+        args=ast.arguments(
+            posonlyargs=[],
+            args=[],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[],
+            kwarg=None,
+            vararg=None,
+        ),
         body=[ast.Return(value=ast.Constant(value=42))],
         decorator_list=[],
         returns=None,
@@ -141,15 +149,23 @@ def test_importfrom_with_none_module():
     # ImportFrom with module=None (relative import)
     import_from_node = ast.ImportFrom(
         module=None,  # This is the edge case
-        names=[ast.alias(name='foo', asname=None)],
-        level=1
+        names=[ast.alias(name="foo", asname=None)],
+        level=1,
     )
     tree.body.append(import_from_node)
 
     # Add a dummy function
     func_def = ast.FunctionDef(
         name="bar",
-        args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[], kwarg=None, vararg=None),
+        args=ast.arguments(
+            posonlyargs=[],
+            args=[],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[],
+            kwarg=None,
+            vararg=None,
+        ),
         body=[ast.Return(value=ast.Constant(value=42))],
         decorator_list=[],
         returns=None,
@@ -204,9 +220,7 @@ def test_combined_edge_cases():
 
     # Test 2: ImportFrom with None module
     import_from_none = ast.ImportFrom(
-        module=None,
-        names=[ast.alias(name='foo', asname=None)],
-        level=1
+        module=None, names=[ast.alias(name="foo", asname=None)], level=1
     )
 
     if isinstance(import_from_none, ast.ImportFrom):

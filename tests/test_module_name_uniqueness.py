@@ -12,8 +12,9 @@ basename.
 import os
 import sys
 import tempfile
-from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from unittest.mock import patch
+
 import pytest
 
 from main import _temporary_module
@@ -116,7 +117,9 @@ def test_function(x: int) -> int:
         num_threads = 20
         with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
             with ThreadPoolExecutor(max_workers=num_threads) as executor:
-                futures = [executor.submit(create_temp_module) for _ in range(num_threads)]
+                futures = [
+                    executor.submit(create_temp_module) for _ in range(num_threads)
+                ]
                 results = [f.result() for f in as_completed(futures)]
 
         # All should succeed
@@ -144,32 +147,38 @@ def test_function(x: int) -> int:
 """
 
         # Capture the actual module name used by checking sys.modules
-        temp_modules_before = set(name for name in sys.modules.keys() if name.startswith("mcp_temp_"))
+        temp_modules_before = set(
+            name for name in sys.modules.keys() if name.startswith("mcp_temp_")
+        )
 
         with _temporary_module(code) as module:
             assert hasattr(module, "test_function")
 
             # Find the newly added module
-            temp_modules_during = set(name for name in sys.modules.keys() if name.startswith("mcp_temp_"))
+            temp_modules_during = set(
+                name for name in sys.modules.keys() if name.startswith("mcp_temp_")
+            )
             new_modules = temp_modules_during - temp_modules_before
 
-            assert len(new_modules) == 1, f"Expected exactly 1 new temp module, got {len(new_modules)}"
+            assert (
+                len(new_modules) == 1
+            ), f"Expected exactly 1 new temp module, got {len(new_modules)}"
             module_name = list(new_modules)[0]
 
         # Verify the module name format
         # After fix: should contain UUID (32 hex digits)
-        uuid_part = module_name[len("mcp_temp_"):]
+        uuid_part = module_name[len("mcp_temp_") :]
 
         # A UUID4 has 32 hex chars (no hyphens in our implementation)
         hex_chars = set("0123456789abcdef")
-        assert len(uuid_part) == 32 and all(c in hex_chars for c in uuid_part), (
-            f"Module name UUID part should be 32 hex characters, got: {uuid_part}"
-        )
+        assert len(uuid_part) == 32 and all(
+            c in hex_chars for c in uuid_part
+        ), f"Module name UUID part should be 32 hex characters, got: {uuid_part}"
 
         # Verify it does NOT look like old tempfile basename pattern
-        assert not uuid_part.startswith("tmp"), (
-            f"Module name should use UUID pattern, not tempfile basename: {module_name}"
-        )
+        assert not uuid_part.startswith(
+            "tmp"
+        ), f"Module name should use UUID pattern, not tempfile basename: {module_name}"
 
     def test_no_sys_modules_leak_after_context_exit(self):
         """Test that temporary modules are properly removed from sys.modules."""
@@ -179,20 +188,24 @@ def test_function(x: int) -> int:
 """
 
         # Track modules before
-        temp_modules_before = set(name for name in sys.modules.keys() if name.startswith("mcp_temp_"))
+        temp_modules_before = set(
+            name for name in sys.modules.keys() if name.startswith("mcp_temp_")
+        )
 
         # Create and exit temporary module
         with _temporary_module(code) as module:
             assert hasattr(module, "test_function")
 
         # Track modules after
-        temp_modules_after = set(name for name in sys.modules.keys() if name.startswith("mcp_temp_"))
+        temp_modules_after = set(
+            name for name in sys.modules.keys() if name.startswith("mcp_temp_")
+        )
 
         # Should be cleaned up (only new modules from this test)
         new_modules = temp_modules_after - temp_modules_before
-        assert len(new_modules) == 0, (
-            f"Temporary module not cleaned up from sys.modules: {new_modules}"
-        )
+        assert (
+            len(new_modules) == 0
+        ), f"Temporary module not cleaned up from sys.modules: {new_modules}"
 
     def test_lifespan_cleanup_works_with_uuid_names(self):
         """Test that lifespan cleanup logic works with UUID-based module names."""
@@ -208,6 +221,7 @@ def test_function(x: int) -> int:
 
         # Use UUID-based naming (the fix)
         import uuid
+
         module_name = f"mcp_temp_{uuid.uuid4().hex}"
         created_module_names.append(module_name)
 
@@ -225,7 +239,9 @@ def test_function(x: int) -> int:
                 temp_modules = [
                     name for name in sys.modules.keys() if name.startswith("mcp_temp_")
                 ]
-                assert module_name in temp_modules, "UUID-based module should be found by cleanup logic"
+                assert (
+                    module_name in temp_modules
+                ), "UUID-based module should be found by cleanup logic"
 
                 # Do the cleanup
                 for name in temp_modules:

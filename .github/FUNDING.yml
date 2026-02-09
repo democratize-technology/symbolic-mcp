@@ -1,28 +1,13 @@
-# SPDX-License-Identifier: MIT
-# Copyright (c) 2025 Symbolic MCP Contributors
+# These are supported funding model platforms
 
-# 🤝 Support Symbolic MCP Development
-
-Thank you for considering supporting the Symbolic MCP project! Your support helps us continue developing and maintaining this important open-source security tool.
-
-## 💰 Sponsorship Options
-
-### 🏆 GitHub Sponsors
 github: [YourGitHubUsername]  # Replace with actual sponsor username
-
-### 🏢 Corporate Sponsorship
-- **Tier 1**: $1,000/month - Logo on README, priority support
-- **Tier 2**: $5,000/month - All above + custom features
-- **Tier 3**: $10,000/month - All above + dedicated support
-
-### 🎓 Academic Sponsorship
-Special rates available for academic institutions and research groups.
-
-## 🔗 Contact for Sponsorship
-
-**Email**: funding@symbolic-mcp.org
-**Discord**: [Community Server](https://discord.gg/symbolic-mcp)
-
-## 🙏 All Supporters Welcome
-
-Even small contributions make a difference in maintaining this security tool for the community!
+patreon: # Replace with your Patreon username
+open_collective: # Replace with your Open Collective username
+ko_fi: # Replace with your Ko-fi username
+tidelift: # Replace with your Tidelift platform name/package-name
+community_bridge: # Replace with your Community Bridge project name
+liberapay: # Replace with your Liberapay username
+issuehunt: # Replace with your IssueHunt username
+otechie: # Replace with your Otechie username
+lfx_crowdfunding: # Replace with your LFX Crowdfunding project name
+custom: ['https://paypal.me/yourusername'] # Replace with your custom donation URL

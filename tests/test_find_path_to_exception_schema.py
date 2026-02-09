@@ -41,8 +41,9 @@ These tests verify the EXACT JSON schema specification from Section 4:
 }
 """
 
-import pytest
 import jsonschema
+import pytest
+
 from main import logic_find_path_to_exception as find_path_to_exception
 
 # EXACT Section 4 schema
@@ -51,42 +52,34 @@ SECTION_4_SCHEMA = {
     "properties": {
         "status": {
             "type": "string",
-            "enum": ["found", "unreachable", "timeout", "error"]
+            "enum": ["found", "unreachable", "timeout", "error"],
         },
         "triggering_inputs": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "args": {
-                        "type": "object"
-                    },
-                    "kwargs": {
-                        "type": "object"
-                    },
-                    "path_condition": {
-                        "type": "string"
-                    },
-                    "stack_trace": {
-                        "type": "string"
-                    }
+                    "args": {"type": "object"},
+                    "kwargs": {"type": "object"},
+                    "path_condition": {"type": "string"},
+                    "stack_trace": {"type": "string"},
                 },
                 "required": ["args", "kwargs", "path_condition", "stack_trace"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
-        "paths_to_exception": {
-            "type": "integer"
-        },
-        "total_paths_explored": {
-            "type": "integer"
-        },
-        "time_seconds": {
-            "type": "number"
-        }
+        "paths_to_exception": {"type": "integer"},
+        "total_paths_explored": {"type": "integer"},
+        "time_seconds": {"type": "number"},
     },
-    "required": ["status", "triggering_inputs", "paths_to_exception", "total_paths_explored", "time_seconds"],
-    "additionalProperties": False
+    "required": [
+        "status",
+        "triggering_inputs",
+        "paths_to_exception",
+        "total_paths_explored",
+        "time_seconds",
+    ],
+    "additionalProperties": False,
 }
 
 
@@ -98,15 +91,15 @@ def validate_section_4_schema(result):
 def test_exact_schema_fields_found_status():
     """Test exact schema compliance when exception is found."""
     # This test will FAIL with current implementation
-    code = '''
+    code = """
 def risky_access(lst, idx):
     return lst[idx]
-'''
+"""
     result = find_path_to_exception(
         code=code,
         function_name="risky_access",
         exception_type="IndexError",
-        timeout_seconds=10
+        timeout_seconds=10,
     )
 
     # Should have EXACT fields from Section 4 spec
@@ -135,17 +128,17 @@ def risky_access(lst, idx):
 
 def test_exact_schema_fields_unreachable_status():
     """Test exact schema compliance when exception is unreachable."""
-    code = '''
+    code = """
 def safe_div(a, b):
     if b == 0:
         return 0.0
     return a / b
-'''
+"""
     result = find_path_to_exception(
         code=code,
         function_name="safe_div",
         exception_type="ZeroDivisionError",
-        timeout_seconds=10
+        timeout_seconds=10,
     )
 
     # Should have EXACT fields from Section 4 spec
@@ -160,19 +153,22 @@ def safe_div(a, b):
 
 def test_no_extra_fields_allowed():
     """Test that NO extra fields are present beyond Section 4 specification."""
-    code = '''
+    code = """
 def f(x):
     return x
-'''
+"""
     result = find_path_to_exception(
-        code=code,
-        function_name="f",
-        exception_type="ValueError",
-        timeout_seconds=10
+        code=code, function_name="f", exception_type="ValueError", timeout_seconds=10
     )
 
     # Get exact set of fields from Section 4 spec
-    allowed_fields = {"status", "triggering_inputs", "paths_to_exception", "total_paths_explored", "time_seconds"}
+    allowed_fields = {
+        "status",
+        "triggering_inputs",
+        "paths_to_exception",
+        "total_paths_explored",
+        "time_seconds",
+    }
     actual_fields = set(result.keys())
 
     # Should have NO extra fields
@@ -182,15 +178,15 @@ def f(x):
 
 def test_triggering_inputs_structure_exact():
     """Test exact triggering_inputs structure when exception is found."""
-    code = '''
+    code = """
 def divide_by_zero(x):
     return 10 / x
-'''
+"""
     result = find_path_to_exception(
         code=code,
         function_name="divide_by_zero",
         exception_type="ZeroDivisionError",
-        timeout_seconds=10
+        timeout_seconds=10,
     )
 
     if result["status"] == "found":
@@ -199,7 +195,9 @@ def divide_by_zero(x):
             required_fields = {"args", "kwargs", "path_condition", "stack_trace"}
             trigger_fields = set(trigger.keys())
 
-            assert trigger_fields == required_fields, f"Trigger fields mismatch: {trigger_fields} vs {required_fields}"
+            assert (
+                trigger_fields == required_fields
+            ), f"Trigger fields mismatch: {trigger_fields} vs {required_fields}"
 
             # Types must be exact
             assert isinstance(trigger["args"], dict)
@@ -214,18 +212,18 @@ def divide_by_zero(x):
 
 def test_path_condition_present():
     """Test that path_condition is extracted and present."""
-    code = '''
+    code = """
 def conditional_error(x, y):
     if x > 0:
         return y[10]  # IndexError when x > 0
     else:
         return 0
-'''
+"""
     result = find_path_to_exception(
         code=code,
         function_name="conditional_error",
         exception_type="IndexError",
-        timeout_seconds=10
+        timeout_seconds=10,
     )
 
     if result["status"] == "found":
@@ -244,7 +242,7 @@ def conditional_error(x, y):
 def test_real_exception_analysis_not_assertion_hack():
     """Test that we're doing real exception analysis, not assertion wrapping."""
     # Current implementation uses assertion hack - this should fail
-    code = '''
+    code = """
 def complex_function(lst, idx, flag):
     if flag:
         try:
@@ -253,13 +251,13 @@ def complex_function(lst, idx, flag):
             return None
     else:
         return len(lst)
-'''
+"""
 
     result = find_path_to_exception(
         code=code,
         function_name="complex_function",
         exception_type="IndexError",
-        timeout_seconds=10
+        timeout_seconds=10,
     )
 
     # Real analysis should handle try/except blocks correctly
@@ -272,19 +270,19 @@ def complex_function(lst, idx, flag):
 
 def test_stack_trace_details():
     """Test that stack trace contains meaningful information."""
-    code = '''
+    code = """
 def function_a(x):
     return x[0]  # IndexError here
 
 def function_b():
     return function_a([])
-'''
+"""
 
     result = find_path_to_exception(
         code=code,
         function_name="function_b",
         exception_type="IndexError",
-        timeout_seconds=10
+        timeout_seconds=10,
     )
 
     if result["status"] == "found":
@@ -306,18 +304,18 @@ def function_b():
 
 def test_performance_metrics():
     """Test that performance metrics are realistic."""
-    code = '''
+    code = """
 def simple_function(x):
     if x == 42:
         raise ValueError("Found 42")
     return x
-'''
+"""
 
     result = find_path_to_exception(
         code=code,
         function_name="simple_function",
         exception_type="ValueError",
-        timeout_seconds=10
+        timeout_seconds=10,
     )
 
     # Performance metrics should be reasonable
@@ -345,10 +343,7 @@ def test_error_status_schema():
     code = "def f(x) pass"  # Syntax error
 
     result = find_path_to_exception(
-        code=code,
-        function_name="f",
-        exception_type="ValueError",
-        timeout_seconds=10
+        code=code, function_name="f", exception_type="ValueError", timeout_seconds=10
     )
 
     # Even error status must follow exact schema

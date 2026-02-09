@@ -29,11 +29,11 @@ and node.module could be None for relative imports.
 See: https://github.com/your-repo/issues/8
 """
 
+import ast
 import sys
 from unittest.mock import MagicMock
 
 import pytest
-import ast
 
 # Mock crosshair modules before importing from main
 sys_modules_mock = MagicMock()
@@ -147,11 +147,11 @@ class TestASTStructureEdgeCases:
         # We can't create this with actual Python code, so we construct the AST directly
         # to test the validation logic
         import ast
+
         from main import BLOCKED_MODULES
 
         # Simulate walking an AST with an Import node that has empty names
         # This would be the edge case that could cause IndexError
-
         # Create an Import node with empty names list (not possible in valid Python)
         import_node = ast.Import(names=[])
 
@@ -178,7 +178,9 @@ class TestASTStructureEdgeCases:
         import ast
 
         # Create an ImportFrom node with module=None (as in relative imports)
-        import_from_node = ast.ImportFrom(module=None, names=[ast.alias(name='foo', asname=None)], level=1)
+        import_from_node = ast.ImportFrom(
+            module=None, names=[ast.alias(name="foo", asname=None)], level=1
+        )
 
         # Our fixed code should handle None module
         if isinstance(import_from_node, ast.ImportFrom):

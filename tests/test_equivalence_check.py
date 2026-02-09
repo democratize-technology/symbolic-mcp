@@ -32,9 +32,10 @@ According to Section 5.3, these tests must demonstrate that symbolic
 execution can verify that two implementations are equivalent or find differences.
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add the project root to Python path for imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
@@ -58,26 +59,38 @@ class TestEquivalenceChecking:
         This is the EXACT test case from Section 5.3 of the specification.
         """
         # This is the EXACT code from Section 5.3 specification
-        code = '''
+        code = """
 def impl_a(x: int) -> int:
     return x * 2
 
 def impl_b(x: int) -> int:
     return x + x if x != 0 else 1  # Bug: wrong for x=0
-'''
+"""
 
-        result = compare_functions(code=code, function_a="impl_a", function_b="impl_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code, function_a="impl_a", function_b="impl_b", timeout_seconds=30
+        )
 
         # Expected result based on Section 5.3 specification
-        assert result["status"] == "different", f"Expected 'different', got {result['status']}"
-        assert "distinguishing_input" in result, "Expected distinguishing input in result"
+        assert (
+            result["status"] == "different"
+        ), f"Expected 'different', got {result['status']}"
+        assert (
+            "distinguishing_input" in result
+        ), "Expected distinguishing input in result"
 
         # The distinguishing input should be x=0
         dist_input = result["distinguishing_input"]
         # Check that the distinguishing input contains 0 (be flexible about key naming)
         args = dist_input.get("args", {})
-        has_zero_input = any(value == 0 for value in args.values()) if isinstance(args, dict) else False
-        assert has_zero_input, f"Expected distinguishing input with value 0, got {dist_input}"
+        has_zero_input = (
+            any(value == 0 for value in args.values())
+            if isinstance(args, dict)
+            else False
+        )
+        assert (
+            has_zero_input
+        ), f"Expected distinguishing input with value 0, got {dist_input}"
 
     def test_verifies_equivalent_implementations(self):
         """
@@ -98,10 +111,17 @@ def sum_formula_b(n: int) -> int:
     return total
 '''
 
-        result = compare_functions(code=code, function_a="sum_formula_a", function_b="sum_formula_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="sum_formula_a",
+            function_b="sum_formula_b",
+            timeout_seconds=30,
+        )
 
         # These should be equivalent
-        assert result["status"] == "equivalent", f"Expected 'equivalent', got {result['status']}"
+        assert (
+            result["status"] == "equivalent"
+        ), f"Expected 'equivalent', got {result['status']}"
 
     def test_detects_subtle_difference_with_large_numbers(self):
         """
@@ -129,11 +149,20 @@ def factorial_b(n: int) -> int:
     return result
 '''
 
-        result = compare_functions(code=code, function_a="factorial_a", function_b="factorial_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="factorial_a",
+            function_b="factorial_b",
+            timeout_seconds=30,
+        )
 
         # Should detect the difference at n=20
-        assert result["status"] == "different", f"Expected 'different', got {result['status']}"
-        assert "distinguishing_input" in result, "Expected distinguishing input in result"
+        assert (
+            result["status"] == "different"
+        ), f"Expected 'different', got {result['status']}"
+        assert (
+            "distinguishing_input" in result
+        ), "Expected distinguishing input in result"
 
     def test_detects_difference_in_error_handling(self):
         """
@@ -154,10 +183,17 @@ def safe_divide_b(x: int, y: int) -> int:
     return x // y
 '''
 
-        result = compare_functions(code=code, function_a="safe_divide_a", function_b="safe_divide_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="safe_divide_a",
+            function_b="safe_divide_b",
+            timeout_seconds=30,
+        )
 
         # Should detect the difference in error handling
-        assert result["status"] == "different", f"Expected 'different', got {result['status']}"
+        assert (
+            result["status"] == "different"
+        ), f"Expected 'different', got {result['status']}"
 
     def test_detects_difference_in_float_precision(self):
         """
@@ -174,10 +210,17 @@ def calculate_pi_b() -> float:
     return math.pi
 '''
 
-        result = compare_functions(code=code, function_a="calculate_pi_a", function_b="calculate_pi_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="calculate_pi_a",
+            function_b="calculate_pi_b",
+            timeout_seconds=30,
+        )
 
         # These should be different (22/7 approximation vs actual pi)
-        assert result["status"] == "different", f"Expected 'different', got {result['status']}"
+        assert (
+            result["status"] == "different"
+        ), f"Expected 'different', got {result['status']}"
 
     def test_verifies_string_manipulation_equivalence(self):
         """
@@ -196,10 +239,17 @@ def reverse_string_b(s: str) -> str:
     return result
 '''
 
-        result = compare_functions(code=code, function_a="reverse_string_a", function_b="reverse_string_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="reverse_string_a",
+            function_b="reverse_string_b",
+            timeout_seconds=30,
+        )
 
         # These should be equivalent
-        assert result["status"] == "equivalent", f"Expected 'equivalent', got {result['status']}"
+        assert (
+            result["status"] == "equivalent"
+        ), f"Expected 'equivalent', got {result['status']}"
 
     def test_detects_edge_case_difference(self):
         """
@@ -221,10 +271,17 @@ def array_max_b(arr: list) -> int:
     return maximum
 '''
 
-        result = compare_functions(code=code, function_a="array_max_a", function_b="array_max_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="array_max_a",
+            function_b="array_max_b",
+            timeout_seconds=30,
+        )
 
         # Should detect the difference for empty arrays
-        assert result["status"] == "different", f"Expected 'different', got {result['status']}"
+        assert (
+            result["status"] == "different"
+        ), f"Expected 'different', got {result['status']}"
 
     def test_verifies_recursive_equivalence(self):
         """
@@ -247,10 +304,17 @@ def fibonacci_b(n: int) -> int:
     return b
 '''
 
-        result = compare_functions(code=code, function_a="fibonacci_a", function_b="fibonacci_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="fibonacci_a",
+            function_b="fibonacci_b",
+            timeout_seconds=30,
+        )
 
         # These should be equivalent (though might be slow for large n)
-        assert result["status"] == "equivalent", f"Expected 'equivalent', got {result['status']}"
+        assert (
+            result["status"] == "equivalent"
+        ), f"Expected 'equivalent', got {result['status']}"
 
     def test_detects_boolean_logic_difference(self):
         """
@@ -266,10 +330,17 @@ def is_even_b(n: int) -> bool:
     return (n & 1) == 0 if n >= 0 else (n & 1) == 1  # Bug for negative numbers
 '''
 
-        result = compare_functions(code=code, function_a="is_even_a", function_b="is_even_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="is_even_a",
+            function_b="is_even_b",
+            timeout_seconds=30,
+        )
 
         # Should detect the difference for negative even numbers
-        assert result["status"] == "different", f"Expected 'different', got {result['status']}"
+        assert (
+            result["status"] == "different"
+        ), f"Expected 'different', got {result['status']}"
 
     def test_detects_difference_in_type_handling(self):
         """
@@ -289,10 +360,17 @@ def to_string_b(x) -> str:
     return str(x)
 '''
 
-        result = compare_functions(code=code, function_a="to_string_a", function_b="to_string_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="to_string_a",
+            function_b="to_string_b",
+            timeout_seconds=30,
+        )
 
         # Should detect differences for None and boolean values
-        assert result["status"] == "different", f"Expected 'different', got {result['status']}"
+        assert (
+            result["status"] == "different"
+        ), f"Expected 'different', got {result['status']}"
 
     def test_verifies_mathematical_equivalence(self):
         """
@@ -318,10 +396,18 @@ def quadratic_solution_b(a: float, b: float, c: float) -> float:
     return 2*c / (-b - discriminant**0.5)  # Mathematically equivalent
 '''
 
-        result = compare_functions(code=code, function_a="quadratic_solution_a", function_b="quadratic_solution_b", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="quadratic_solution_a",
+            function_b="quadratic_solution_b",
+            timeout_seconds=30,
+        )
 
         # These should be equivalent (within floating point precision)
-        assert result["status"] in ["equivalent", "different"], f"Expected 'equivalent' or 'different', got {result['status']}"
+        assert result["status"] in [
+            "equivalent",
+            "different",
+        ], f"Expected 'equivalent' or 'different', got {result['status']}"
 
 
 class TestErrorHandling:
@@ -331,45 +417,72 @@ class TestErrorHandling:
 
     def test_handles_missing_function_real(self):
         """Test missing function handling without mocks."""
-        code = '''
+        code = """
 def existing_function(x: int) -> int:
     return x
-'''
+"""
 
-        result = compare_functions(code=code, function_a="existing_function", function_b="missing_function", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="existing_function",
+            function_b="missing_function",
+            timeout_seconds=30,
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
-        assert "NameError" in result.get("error_type", ""), f"Expected NameError, got {result.get('error_type')}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
+        assert "NameError" in result.get(
+            "error_type", ""
+        ), f"Expected NameError, got {result.get('error_type')}"
 
     def test_handles_syntax_error_real(self):
         """Test syntax error handling without mocks."""
-        code = '''
+        code = """
 def good_function(x: int) -> int:
     return x
 
 def bad_function(y: int) -> int
     return y  # Missing colon in definition
-'''
+"""
 
-        result = compare_functions(code=code, function_a="good_function", function_b="bad_function", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="good_function",
+            function_b="bad_function",
+            timeout_seconds=30,
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
-        assert "SyntaxError" in result.get("error_type", ""), f"Expected SyntaxError, got {result.get('error_type')}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
+        assert "SyntaxError" in result.get(
+            "error_type", ""
+        ), f"Expected SyntaxError, got {result.get('error_type')}"
 
     def test_handles_sandbox_violation_real(self):
         """Test sandbox violation handling without mocks."""
-        code = '''
+        code = """
 def safe_function(x: int) -> int:
     return x * 2
 
 def unsafe_function(x: int) -> int:
     import os  # Blocked import
     return x * 2
-'''
+"""
 
-        result = compare_functions(code=code, function_a="safe_function", function_b="unsafe_function", timeout_seconds=30)
+        result = compare_functions(
+            code=code,
+            function_a="safe_function",
+            function_b="unsafe_function",
+            timeout_seconds=30,
+        )
 
-        assert result["status"] == "error", f"Expected error status, got {result['status']}"
+        assert (
+            result["status"] == "error"
+        ), f"Expected error status, got {result['status']}"
         # The sandbox should block the os module import
         error_msg = result.get("message", "").lower()
-        assert "blocked" in error_msg or "sandbox" in error_msg or "import" in error_msg, f"Expected import/sandbox error, got: {error_msg}"
+        assert (
+            "blocked" in error_msg or "sandbox" in error_msg or "import" in error_msg
+        ), f"Expected import/sandbox error, got: {error_msg}"
