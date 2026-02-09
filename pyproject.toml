@@ -247,14 +247,8 @@ precision = 2
 [tool.coverage.html]
 directory = "htmlcov"
 
-[tool.bandit]
-exclude_dirs = ["tests", "build", "dist"]
-skips = [
-    "B101",  # assert_used (we use assertions in tests)
-    "B601"   # shell_injection_process (controlled usage)
-]
-
-# Note: flake8 config is in pre-commit hook args, not pyproject.toml
+# Note: flake8 config is in .flake8 file
+# Note: bandit config is in .bandit file
 # flake8 7.x has limited pyproject.toml support
 
 [tool.tox]
@@ -272,24 +266,24 @@ commands = pytest {posargs}
 
 [testenv:flake8]
 deps = flake8
-commands = flake8 main.py
+commands = flake8 .
 
 [testenv:mypy]
 deps =
     mypy>=1.5.0
     types-psutil
-commands = mypy main.py
+commands = mypy .
 
 [testenv:bandit]
 deps = bandit>=1.7.0
-commands = bandit -r main.py
+commands = bandit -r .
 
 [testenv:security]
 deps =
     bandit>=1.7.0
     safety>=2.3.0
 commands =
-    bandit -r main.py
+    bandit -r .
     safety check
 
 [testenv:format]
@@ -297,51 +291,20 @@ deps =
     black>=23.0.0
     isort>=5.12.0
 commands =
-    black --check main.py
-    isort --check-only main.py
+    black --check .
+    isort --check-only .
 
 [testenv:format-fix]
 deps =
     black>=23.0.0
     isort>=5.12.0
 commands =
-    black main.py
-    isort main.py
+    black .
+    isort .
 """
-
-# Development workflow configuration
-[tool.interrogate]
-ignore-init-method = true
-ignore-init-module = false
-ignore-magic = false
-ignore-semiprivate = false
-ignore-private = false
-ignore-property-decorators = false
-ignore-module = false
-ignore-nested-functions = false
-ignore-nested-classes = true
-ignore-setters = false
-fail-under = 95
-exclude = ["tests", "setup.py"]
-ignore-regex = ["^get$", "^mock_.*", ".*BaseClass.*"]
-verbose = 0
-quiet = false
-whitelist-regex = []
-color = true
-omit-covered-files = false
 
 # Security configuration
 [tool.safety]
 ignore = []  # No ignored CVEs
 full-report = true
 ignore-cvss-severity-below = 0
-
-# Performance monitoring (if prod dependencies are installed)
-[tool.wily]
-exclude = [
-    "tests/*",
-    "test_*",
-    "setup.py",
-    "build/*",
-    "dist/*"
-]

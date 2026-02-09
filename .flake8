@@ -43,7 +43,6 @@ per-file-ignores =
     test_*.py:F401,F811,E722,F841,E402,E501
     tests/*:F401,F811,E722,F841,E402,E501
     main.py:E501,E722,F401,F811,F841,C901,E402
-    version_manager.py:E501,F401,F811,F541,C901
     scripts/*.py:E501,F401,F541,C901,E402
     conftest.py:F401,F811,E402,E501
 

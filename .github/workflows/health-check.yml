@@ -112,7 +112,7 @@ jobs:
 
       - name: Security scan with Bandit
         run: |
-          bandit -r main.py -f json -o bandit-report.json
+          bandit -r . -f json -o bandit-report.json
 
       - name: Check dependencies for vulnerabilities
         run: |
@@ -150,7 +150,7 @@ jobs:
 
       - name: Type checking with mypy
         run: |
-          mypy main.py --python-version=3.11 --ignore-missing-imports --warn-return-any --junit-xml mypy-report.xml || true
+          mypy . --python-version=3.11 --ignore-missing-imports --warn-return-any --junit-xml mypy-report.xml || true
 
       - name: Upload mypy report
         uses: actions/upload-artifact@v3
@@ -182,7 +182,7 @@ jobs:
 
       - name: Code quality with flake8
         run: |
-          flake8 main.py --format=json --output-file=flake8-report.json || true
+          flake8 . --format=json --output-file=flake8-report.json || true
 
       - name: Upload flake8 report
         uses: actions/upload-artifact@v3
