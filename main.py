@@ -787,7 +787,9 @@ def _temporary_module(code: str) -> Generator[types.ModuleType, None, None]:
                 del sys.modules[module_name]
         if os.path.exists(tmp_path):
             try:
-                os.unlink(tmp_path)
+                # Use os.remove() for clarity (same as os.unlink() for files)
+                # tempfile.NamedTemporaryFile guarantees tmp_path is a file, not a directory
+                os.remove(tmp_path)
             except OSError as e:
                 logger.debug(f"Failed to delete temporary file {tmp_path}: {e}")
 
