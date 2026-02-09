@@ -28,7 +28,7 @@ class FastMCPCompatibilityChecker:
             "test_results": {},
         }
 
-    def check_fastmcp_installation(self) -> dict[str, str]:
+    def check_fastmcp_installation(self) -> dict[str, bool | str | None]:
         """Check FastMCP installation and version"""
         try:
             import fastmcp
