@@ -23,6 +23,12 @@ def pytest_configure(config):
         if key.startswith("SYMBOLIC_"):
             del os.environ[key]
 
+    # Register custom test markers
+    config.addinivalue_line(
+        "markers", "integration: Tests using real CrossHair symbolic execution"
+    )
+    config.addinivalue_line("markers", "mocked: Tests using CrossHair mocks")
+
 
 @pytest.fixture(autouse=True)
 def clean_symbolic_env_per_test():

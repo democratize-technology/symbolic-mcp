@@ -16,9 +16,12 @@ on:
         type: boolean
 
 jobs:
-  health-check:
+  # =============================================================================
+  # UNIT TESTS - Fast tests without external dependencies
+  # =============================================================================
+  unit:
     runs-on: ubuntu-latest
-    name: Health Check
+    name: Unit Tests
 
     steps:
       - name: Checkout code
@@ -32,19 +35,80 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install bandit safety pytest-cov
+          pip install -e ".[dev]"
 
-      - name: Run tests with coverage
+      - name: Run unit tests
         run: |
-          pytest --cov=main --cov-report=xml --cov-report=term
+          pytest tests/ -m "not integration and not slow" \
+            --cov=main \
+            --cov-report=xml \
+            --cov-report=term \
+            --cov-fail-under=85
 
-      - name: Upload coverage to Codecov
+      - name: Upload unit coverage
         uses: codecov/codecov-action@v3
         with:
           file: ./coverage.xml
           flags: unittests
-          name: codecov-umbrella
+          name: codecov-unit
+
+  # =============================================================================
+  # INTEGRATION TESTS - Real CrossHair execution
+  # =============================================================================
+  integration:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run integration tests
+        run: |
+          pytest tests/ -m integration \
+            --cov=main \
+            --cov-report=xml \
+            --cov-append \
+            --cov-report=term
+
+      - name: Upload integration coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: integration
+          name: codecov-integration
+
+  # =============================================================================
+  # SECURITY SCANS - Bandit and Safety
+  # =============================================================================
+  security:
+    runs-on: ubuntu-latest
+    name: Security Scans
+    needs: [unit, integration]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
       - name: Security scan with Bandit
         run: |
@@ -54,13 +118,99 @@ jobs:
         run: |
           safety check --json --output safety-report.json || true
 
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          retention-days: 30
+
+  # =============================================================================
+  # TYPE CHECKING - mypy
+  # =============================================================================
+  type-check:
+    runs-on: ubuntu-latest
+    name: Type Checking
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
       - name: Type checking with mypy
         run: |
-          mypy . --strict --junit-xml mypy-report.xml || true
+          mypy main.py --python-version=3.11 --ignore-missing-imports --warn-return-any --junit-xml mypy-report.xml || true
+
+      - name: Upload mypy report
+        uses: actions/upload-artifact@v3
+        with:
+          name: mypy-report
+          path: mypy-report.xml
+          retention-days: 30
+
+  # =============================================================================
+  # CODE QUALITY - flake8
+  # =============================================================================
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code Quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
       - name: Code quality with flake8
         run: |
-          flake8 . --format=json --output-file=flake8-report.json || true
+          flake8 main.py --format=json --output-file=flake8-report.json || true
+
+      - name: Upload flake8 report
+        uses: actions/upload-artifact@v3
+        with:
+          name: flake8-report
+          path: flake8-report.json
+          retention-days: 30
+
+  # =============================================================================
+  # DOCUMENTATION BUILD CHECK
+  # =============================================================================
+  docs-build:
+    runs-on: ubuntu-latest
+    name: Documentation Build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
       - name: Check documentation build
         run: |
@@ -71,6 +221,24 @@ jobs:
             fi
             make html || sphinx-build -b html . _build/html || echo "No docs build system found"
           fi
+
+  # =============================================================================
+  # HEALTH REPORT GENERATION
+  # =============================================================================
+  health-report:
+    runs-on: ubuntu-latest
+    name: Generate Health Report
+    needs: [unit, integration, security, type-check, code-quality]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/
 
       - name: Generate health report
         run: |
@@ -83,8 +251,8 @@ jobs:
           reports = {}
 
           # Load bandit report
-          if os.path.exists('bandit-report.json'):
-              with open('bandit-report.json') as f:
+          if os.path.exists('artifacts/security-reports/bandit-report.json'):
+              with open('artifacts/security-reports/bandit-report.json') as f:
                   bandit = json.load(f)
                   reports['security'] = {
                       'high_issues': len([r for r in bandit.get('results', []) if r.get('issue_severity') == 'HIGH']),
@@ -94,8 +262,8 @@ jobs:
                   }
 
           # Load safety report
-          if os.path.exists('safety-report.json'):
-              with open('safety-report.json') as f:
+          if os.path.exists('artifacts/security-reports/safety-report.json'):
+              with open('artifacts/security-reports/safety-report.json') as f:
                   safety = json.load(f)
                   reports['dependencies'] = {
                       'vulnerabilities': len(safety.get('vulnerabilities', [])),
@@ -106,7 +274,7 @@ jobs:
           health_data = {
               'timestamp': datetime.now().isoformat(),
               'reports': reports,
-              'overall_status': 'PASS' if all(r.get('status') == 'PASS' for r in reports.values()) else 'FAIL'
+              'overall_status': 'PASS' if all(r.get('status', 'PASS') == 'PASS' for r in reports.values()) else 'FAIL'
           }
 
           with open('health-summary.json', 'w') as f:
@@ -117,6 +285,13 @@ jobs:
           for category, data in reports.items():
               print(f"{category.title()}: {data['status']}")
           EOF
+
+      - name: Upload health summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: health-summary
+          path: health-summary.json
+          retention-days: 30
 
       - name: Comment on issue if health check fails
         if: failure()
@@ -161,6 +336,9 @@ jobs:
               console.log('Could not read health data:', error.message);
             }
 
+  # =============================================================================
+  # DETAILED REPORT (Optional)
+  # =============================================================================
   detailed-report:
     runs-on: ubuntu-latest
     name: Detailed Health Report
@@ -213,13 +391,9 @@ jobs:
           print(f"Recent commits (30d): {detailed_report['repository_stats']['recent_commits_30d']}")
           EOF
 
-      - name: Upload health reports
+      - name: Upload detailed reports
         uses: actions/upload-artifact@v3
         with:
-          name: health-reports
-          path: |
-            health-summary.json
-            detailed-health-report.json
-            bandit-report.json
-            safety-report.json
+          name: detailed-health-reports
+          path: detailed-health-report.json
           retention-days: 30

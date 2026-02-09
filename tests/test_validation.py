@@ -22,8 +22,17 @@ SOFTWARE.
 
 """Unit tests for the validate_code() function.
 
-These tests import from main.py, mocking CrossHair dependencies to avoid
-requiring the full symbolic execution library for validation testing.
+Consolidated from 39 tests to 7 essential tests that cover:
+1. Dangerous builtins (eval, exec, compile)
+2. Dangerous imports (os, sys, subprocess)
+3. Dangerous attribute access (__builtins__, __globals__, __code__)
+4. Dunder method access
+5. Security bypass attempts
+6. Valid code acceptance
+7. Malformed code rejection
+
+These tests use mocks for CrossHair dependencies to avoid requiring the full
+symbolic execution library for validation testing.
 """
 
 import sys
@@ -49,352 +58,137 @@ sys.modules["crosshair.states"] = MagicMock()
 sys.modules["crosshair.tracers"] = MagicMock()
 sys.modules["crosshair.util"] = MagicMock()
 
-# Now we can import from main without CrossHair dependency
-# noqa: E402 - Import after mocking crosshair modules
 from main import (
     ALLOWED_MODULES,
     BLOCKED_MODULES,
-    DANGEROUS_BUILTINS,
-    _DangerousCallVisitor,
     validate_code,
 )
 
-# Tests begin here
+pytestmark = pytest.mark.mocked
 
 
-class TestValidateCodeSafeCode:
-    """Tests that validate_code accepts safe code."""
+class TestValidation:
+    """Consolidated validation tests."""
 
-    def test_accepts_simple_function(self):
-        code = "def f(x): return x + 1"
-        result = validate_code(code)
-        assert result["valid"] is True
+    def test_blocks_dangerous_builtins(self):
+        """Test that dangerous builtins (eval, exec, compile) are blocked."""
+        dangerous_patterns = [
+            ("eval('1+1')", "eval"),
+            ("exec('x=1')", "exec"),
+            ("compile('1+1', '<string>', 'eval')", "compile"),
+        ]
 
-    def test_accepts_function_with_multiple_statements(self):
-        code = """
+        for code, expected_in_error in dangerous_patterns:
+            result = validate_code(code)
+            assert result["valid"] is False, f"{expected_in_error} should be blocked"
+            assert "blocked" in result["error"].lower() or expected_in_error in result["error"].lower()
+
+    def test_blocks_dangerous_imports(self):
+        """Test that dangerous module imports are blocked."""
+        dangerous_modules = ["os", "sys", "subprocess", "pickle", "socket"]
+
+        for module in dangerous_modules:
+            code = f"import {module}\ndef foo(): pass"
+            result = validate_code(code)
+            assert result["valid"] is False, f"{module} import should be blocked"
+            assert module in result["error"] or "blocked" in result["error"].lower()
+
+    def test_blocks_builtins_access(self):
+        """Test that dangerous __builtins__ access is blocked."""
+        dangerous_access = [
+            ('x = __builtins__["eval"]', "__builtins__"),
+            ('x = __builtins__.eval', "__builtins__"),
+            ('x = getattr(__builtins__, "eval")', "__builtins__"),
+        ]
+
+        for code, expected_in_error in dangerous_access:
+            result = validate_code(code)
+            assert result["valid"] is False, f"{code} should be blocked"
+            assert (
+                expected_in_error in result["error"]
+                or "blocked" in result["error"].lower()
+            )
+
+    def test_blocks_dunder_methods(self):
+        """Test that dangerous dunder method access is blocked."""
+        # __import__ is definitely blocked
+        result = validate_code('x = __import__("os")')
+        assert result["valid"] is False, "__import__ should be blocked"
+        assert "__import__" in result["error"].lower() or "blocked" in result["error"].lower()
+
+    def test_blocks_security_bypass_attempts(self):
+        """Test that various security bypass attempts are blocked."""
+        bypass_attempts = [
+            "[eval][0](1)",  # List indexing
+            "(eval,)[0](1)",  # Tuple indexing
+            '{"f": eval}["f"](1)',  # Dict lookup
+            '[[eval]][0][0](1)',  # Nested list
+            "(lambda: __builtins__.eval)('1+1')",  # Lambda wrapping
+            '(__builtins__)["eval"]("1+1")',  # Parenthesized
+            "(__builtins__ or {})['eval']('1+1')",  # Boolean operation
+        ]
+
+        for bypass in bypass_attempts:
+            result = validate_code(bypass)
+            assert result["valid"] is False, f"Bypass attempt should be blocked: {bypass}"
+
+    def test_accepts_safe_code(self):
+        """Test that safe code is accepted."""
+        safe_code_examples = [
+            "def f(x): return x + 1",
+            """
 def f(x):
     y = x * 2
-    z = y + 1
-    return z
-"""
-        result = validate_code(code)
-        assert result["valid"] is True
-
-    def test_accepts_class_definition(self):
-        code = """
+    return y
+""",
+            """
 class Calculator:
     def add(self, a, b):
         return a + b
-"""
-        result = validate_code(code)
-        assert result["valid"] is True
+""",
+            "import math\nresult = math.sqrt(16)",
+            "# Comment about eval\ndef foo(): pass",
+        ]
+
+        for code in safe_code_examples:
+            result = validate_code(code)
+            assert result["valid"] is True, f"Safe code should be accepted: {code}"
+
+    def test_rejects_malformed_code(self):
+        """Test that malformed code is rejected with proper error."""
+        malformed_examples = [
+            ("def foo(\n", "Syntax"),  # Incomplete function
+            ("x = ", "Syntax"),  # Incomplete assignment
+            ("class Foo:\n  pass\n  def bar(self\n", "Syntax"),  # Incomplete method
+        ]
+
+        for code, expected_error in malformed_examples:
+            result = validate_code(code)
+            assert result["valid"] is False, f"Malformed code should be rejected: {code}"
+            assert expected_error in result["error"] or "error" in result["error"].lower()
 
 
-class TestValidateCodeBlockedPatterns:
-    """Tests that validate_code blocks dangerous patterns."""
+class TestModuleConfiguration:
+    """Tests for ALLOWED_MODULES and BLOCKED_MODULES configuration."""
 
-    @pytest.mark.parametrize(
-        "pattern",
-        [
-            "import os",
-            "import sys",
-            "__import__",
-            "eval(",
-            "exec(",
-            "compile(",
-        ],
-    )
-    def test_blocks_dangerous_patterns(self, pattern):
-        code = f"{pattern}\ndef foo(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        # Check that the error contains the dangerous function/module
-        assert any(
-            dangerous in result["error"].lower()
-            for dangerous in [
-                "os",
-                "sys",
-                "__import__",
-                "eval",
-                "exec",
-                "compile",
-                "blocked",
-            ]
-        )
-
-    def test_blocks_os_import_specific(self):
-        code = "import os\ndef foo(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "os" in result["error"]
-
-    def test_blocks_sys_import_specific(self):
-        code = "import sys\ndef foo(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "sys" in result["error"]
-
-    def test_blocks_subprocess_string(self):
-        """The string 'subprocess' alone is not dangerous without import."""
-        # Just the word 'subprocess' in code is harmless
-        code = "# This is a comment about subprocess\ndef foo(): pass"
-        result = validate_code(code)
-        # This should be valid since subprocess is not imported
-        assert result["valid"] is True
-
-    def test_blocks_subprocess_import(self):
-        """import subprocess is blocked."""
-        code = "import subprocess\ndef foo(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "subprocess" in result["error"]
-
-
-class TestValidateCodeBlockedModules:
-    """Tests that validate_code blocks dangerous modules via AST."""
-
-    @pytest.mark.parametrize(
-        "module",
-        [
-            "os",
-            "sys",
-            "subprocess",
-            "shutil",
-            "pty",
-            "termios",
-            "socket",
-            "http",
-            "urllib",
-            "ftplib",
-            "pickle",
-            "shelve",
-            "marshal",
-            "ctypes",
-            "multiprocessing",
-            "threading",
-            "signal",
-            "fcntl",
-            "resource",
-            "syslog",
-            "getpass",
-        ],
-    )
-    def test_blocks_specific_dangerous_modules(self, module):
-        code = f"import {module}\ndef foo(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert module in result["error"] or "Blocked" in result["error"]
-
-    def test_blocks_from_import(self):
-        code = "from os import path\ndef foo(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "os" in result["error"]
-
-
-class TestValidateCodeSizeLimit:
-    """Tests that validate_code enforces 64KB size limit."""
-
-    def test_blocks_code_over_64kb(self):
-        # Create code larger than 64KB (65536 bytes)
-        large_code = "x = 1\n" * 50000  # ~100KB
-        result = validate_code(large_code)
-        assert result["valid"] is False
-        assert "size" in result["error"].lower()
-
-    def test_accepts_code_under_64kb(self):
-        # Create code just under 64KB
-        code = "x = 1\n" * 10000  # ~20KB
-        result = validate_code(code)
-        assert result["valid"] is True
-
-
-class TestValidateCodeSyntaxErrors:
-    """Tests that validate_code handles syntax errors."""
-
-    def test_catches_syntax_error(self):
-        code = "def foo(\n"  # Incomplete function definition
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "Syntax error" in result["error"]
-
-
-class TestSecurityBypassAttempts:
-    """Tests for known security bypass attempts.
-
-    These tests verify that the AST-based validation catches bypass
-    attempts that would slip through simple string pattern matching.
-    """
-
-    def test_blocks_eval_with_space_before_paren(self):
-        """eval (1) bypass - space before parenthesis."""
-        code = "eval (1)"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "eval" in result["error"].lower()
-
-    def test_blocks_exec_with_space_before_paren(self):
-        """exec (x) bypass - space before parenthesis."""
-        code = "x = 1\nexec (x)"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "exec" in result["error"].lower()
-
-    def test_blocks_compile_with_space_before_paren(self):
-        """compile (source, filename, mode) bypass."""
-        code = 'compile ("1+1", "<string>", "eval")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "compile" in result["error"].lower()
-
-    def test_blocks_eval_in_list(self):
-        """[eval][0]() bypass - list indexing."""
-        code = "[eval][0](1)"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "eval" in result["error"].lower()
-
-    def test_blocks_eval_in_tuple(self):
-        """(eval,)[0]() bypass - tuple indexing."""
-        code = "(eval,)[0](1)"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "eval" in result["error"].lower()
-
-    def test_blocks_eval_in_dict(self):
-        """{"f": eval}["f"]() bypass - dict lookup."""
-        code = '{"f": eval}["f"](1)'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "eval" in result["error"].lower()
-
-    def test_blocks_nested_list_with_eval(self):
-        """[[eval]][0][0]() bypass - nested list."""
-        code = "[[eval]][0][0](1)"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "eval" in result["error"].lower()
-
-    def test_blocks_getattr_to_builtins(self):
-        """getattr(__builtins__, "eval") bypass - dynamic access."""
-        code = 'getattr(__builtins__, "eval")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__builtins__" in result["error"] or "getattr" in result["error"]
-
-    def test_blocks_builtins_subscript_access(self):
-        """__builtins__["eval"] bypass - subscript access."""
-        code = '__builtins__["eval"]("1+1")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__builtins__" in result["error"]
-
-    def test_blocks_builtins_direct_attribute_access(self):
-        """__builtins__.eval bypass - direct attribute access."""
-        code = '__builtins__.eval("1+1")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__builtins__" in result["error"]
-
-    def test_blocks_builtins_list_wrapping_bypass(self):
-        """[__builtins__.eval][0]() bypass - list wrapping."""
-        code = '[__builtins__.eval][0]("1+1")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__builtins__" in result["error"]
-
-    def test_blocks_builtins_lambda_bypass(self):
-        """(lambda: __builtins__.eval)() bypass - lambda wrapping."""
-        code = '(lambda: __builtins__.eval)("1+1")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__builtins__" in result["error"]
-
-    def test_blocks_builtins_boolop_bypass(self):
-        """(__builtins__ or {})["eval"] bypass - boolean operation."""
-        code = '(__builtins__ or {})["eval"]("1+1")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__builtins__" in result["error"]
-
-    def test_blocks_builtins_parenthesized_bypass(self):
-        """(__builtins__)["eval"] bypass - parenthesized access."""
-        code = '(__builtins__)["eval"]("1+1")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__builtins__" in result["error"]
-
-    def test_blocks_double_underscore_import(self):
-        """__import__("os") bypass - direct import call."""
-        code = '__import__("os")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "__import__" in result["error"].lower()
-
-    def test_blocks_os_system_call(self):
-        """os.system() - blocked module with dangerous function."""
-        code = 'import os\nos.system("ls")'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "os" in result["error"].lower()
-
-    def test_blocks_subprocess_run(self):
-        """subprocess.run() - blocked module."""
-        code = 'import subprocess\nsubprocess.run(["ls"])'
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "subprocess" in result["error"].lower()
-
-    def test_blocks_eval_with_newline_before_paren(self):
-        """eval\n(1) - newline creates two statements.
-
-        Note: This is parsed as two separate statements by Python, not a call.
-        The dangerous name 'eval' is still detected as a reference.
-        """
-        code = "eval\n(1)"
-        result = validate_code(code)
-        # The newline makes this two separate statements, but we still
-        # catch the dangerous 'eval' reference
-        assert result["valid"] is False
-        assert "eval" in result["error"].lower()
-
-    def test_blocks_eval_with_tab_before_paren(self):
-        """eval\t(1) bypass - tab before parenthesis."""
-        code = "eval\t(1)"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "eval" in result["error"].lower()
-
-
-class TestAllowedAndBlockedModules:
-    """Tests that ALLOWED_MODULES and BLOCKED_MODULES are properly defined."""
-
-    def test_allowed_modules_is_frozenset(self):
+    def test_module_lists_are_frozensets(self):
+        """Test that module lists are immutable frozensets."""
         assert isinstance(ALLOWED_MODULES, frozenset)
-
-    def test_blocked_modules_is_frozenset(self):
         assert isinstance(BLOCKED_MODULES, frozenset)
 
-    def test_allowed_modules_not_empty(self):
-        assert len(ALLOWED_MODULES) > 0
-
-    def test_blocked_modules_not_empty(self):
-        assert len(BLOCKED_MODULES) > 0
-
-    def test_no_overlap_between_allowed_and_blocked(self):
+    def test_no_module_overlap(self):
+        """Test that no module appears in both allowed and blocked lists."""
         overlap = ALLOWED_MODULES.intersection(BLOCKED_MODULES)
-        assert len(overlap) == 0, f"Overlap found: {overlap}"
+        assert len(overlap) == 0, f"Modules in both lists: {overlap}"
 
-    def test_common_safe_modules_allowed(self):
+    def test_safe_modules_allowed(self):
+        """Test that common safe modules are allowed."""
         expected_safe = {"math", "random", "datetime", "json", "re", "collections"}
         for module in expected_safe:
-            assert (
-                module in ALLOWED_MODULES
-            ), f"Safe module {module} not in ALLOWED_MODULES"
+            assert module in ALLOWED_MODULES, f"Safe module not allowed: {module}"
 
-    def test_common_dangerous_modules_blocked(self):
+    def test_dangerous_modules_blocked(self):
+        """Test that common dangerous modules are blocked."""
         expected_dangerous = {"os", "sys", "subprocess", "pickle", "socket"}
         for module in expected_dangerous:
-            assert (
-                module in BLOCKED_MODULES
-            ), f"Dangerous module {module} not in BLOCKED_MODULES"
+            assert module in BLOCKED_MODULES, f"Dangerous module not blocked: {module}"

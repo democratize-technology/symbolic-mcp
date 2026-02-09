@@ -30,6 +30,9 @@ from main import (
     logic_symbolic_check,
 )
 
+# All tests in this file are integration tests using real CrossHair
+pytestmark = pytest.mark.integration
+
 
 # Test 1: Basic Counterexample Finding
 def test_finds_needle_in_haystack():

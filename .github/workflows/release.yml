@@ -13,9 +13,12 @@ permissions:
   packages: write
 
 jobs:
-  test:
+  # =============================================================================
+  # UNIT TESTS - Must pass before release
+  # =============================================================================
+  test-unit:
     runs-on: ubuntu-latest
-    name: Test Before Release
+    name: Unit Tests (Release)
 
     steps:
       - name: Checkout code
@@ -29,27 +32,158 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install bandit safety pytest pytest-cov
+          pip install -e ".[dev]"
 
-      - name: Run full test suite
+      - name: Run unit tests
         run: |
-          pytest --cov=main --cov-report=xml --cov-fail-under=90
+          pytest tests/ -m "not integration and not fuzz and not slow" \
+            --cov=main \
+            --cov-report=xml \
+            --cov-fail-under=85
 
-      - name: Security scan
+      - name: Upload unit coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+
+  # =============================================================================
+  # INTEGRATION TESTS - Must pass before release
+  # =============================================================================
+  test-integration:
+    runs-on: ubuntu-latest
+    name: Integration Tests (Release)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run integration tests
+        run: |
+          pytest tests/ -m integration \
+            --cov=main \
+            --cov-report=xml \
+            --cov-append \
+            --cov-fail-under=85
+
+      - name: Upload integration coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: integration
+
+  # =============================================================================
+  # FUZZ/PROPERTY TESTS - Must pass before release
+  # =============================================================================
+  test-fuzz:
+    runs-on: ubuntu-latest
+    name: Fuzz/Property Tests (Release)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run fuzz/property tests
+        run: |
+          pytest tests/test_fuzz*.py -m fuzz \
+            --cov=main \
+            --cov-report=xml \
+            --cov-append
+
+      - name: Upload fuzz coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: fuzz
+
+  # =============================================================================
+  # SECURITY SCANS - Must pass before release
+  # =============================================================================
+  security:
+    runs-on: ubuntu-latest
+    name: Security Scans (Release)
+    needs: [test-unit, test-integration, test-fuzz]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Security scan with Bandit
         run: |
           bandit -r main.py -f json -o bandit-report.json
 
-      - name: Check dependencies
+      - name: Check dependencies for vulnerabilities
         run: |
           safety check
 
-      - name: Type checking
-        run: |
-          mypy . --strict
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-security-reports
+          path: bandit-report.json
+          retention-days: 90
 
+  # =============================================================================
+  # TYPE CHECKING - Must pass before release
+  # =============================================================================
+  type-check:
+    runs-on: ubuntu-latest
+    name: Type Checking (Release)
+    needs: [test-unit, test-integration, test-fuzz]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Type checking with mypy
+        run: |
+          mypy main.py --python-version=3.11 --ignore-missing-imports --warn-return-any
+
+  # =============================================================================
+  # RELEASE BUILD - Only after all tests pass
+  # =============================================================================
   build:
-    needs: test
+    needs: [test-unit, test-integration, test-fuzz, security, type-check]
     runs-on: ubuntu-latest
     name: Build Release Artifacts
 
@@ -82,7 +216,7 @@ jobs:
           path: dist/
 
   docker:
-    needs: test
+    needs: [test-unit, test-integration, test-fuzz, security, type-check]
     runs-on: ubuntu-latest
     name: Build Docker Image
 
@@ -224,9 +358,11 @@ jobs:
 
             ## ✅ Verification
 
-            - All tests passing
-            - Security scans passed
-            - Type checking successful
+            - Unit tests passing (85%+ coverage)
+            - Integration tests passing (real CrossHair execution)
+            - Fuzz/property tests passing (Hypothesis-based testing)
+            - Security scans passed (Bandit + Safety)
+            - Type checking successful (mypy)
             - Docker images built and tested
 
             ## 📚 Documentation

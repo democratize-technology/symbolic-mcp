@@ -214,9 +214,10 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
+    "integration: marks tests as integration tests using real CrossHair",
     "security: marks tests as security-related tests",
-    "unit: marks tests as unit tests"
+    "unit: marks tests as unit tests",
+    "mocked: marks tests using CrossHair mocks instead of real execution"
 ]
 
 [tool.coverage.run]

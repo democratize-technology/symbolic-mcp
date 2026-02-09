@@ -43,6 +43,9 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 # Import the actual logic functions, not decorated tools
 from main import logic_find_path_to_exception as find_path_to_exception
 
+# All tests in this file are integration tests using real CrossHair
+pytestmark = pytest.mark.integration
+
 
 class TestUnreachableException:
     """

@@ -81,15 +81,13 @@ repos:
 
   # =============================================================================
   # TYPE CHECKING
-  # Note: mypy disabled until type annotations are added to main.py
-  # TODO: Enable when type coverage improves
   # =============================================================================
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.13.0
-  #   hooks:
-  #     - id: mypy
-  #       args: ["--python-version=3.11", "--ignore-missing-imports"]
-  #       additional_dependencies: [types-psutil]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: ["--python-version=3.11", "--ignore-missing-imports", "--warn-return-any"]
+        additional_dependencies: [types-psutil]
 
   # =============================================================================
   # DOCUMENTATION

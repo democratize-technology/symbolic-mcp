@@ -31,8 +31,13 @@ Note: These tests require CrossHair/Z3 to be properly installed.
 import os  # noqa: E402
 import sys  # noqa: E402
 
+import pytest  # noqa: E402
+
 # Add parent directory to path to import main
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# All tests in this file are integration tests
+pytestmark = pytest.mark.integration
 
 
 def main_validate_code(code: str):
