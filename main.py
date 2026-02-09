@@ -20,7 +20,7 @@ import threading
 import time
 import types
 import uuid
-from typing import Any, AsyncGenerator, Generator, NotRequired, Optional, Union
+from typing import AsyncGenerator, Generator, NotRequired, Optional
 
 from crosshair.core import AnalysisOptionSet
 from crosshair.core_and_libs import (
@@ -466,7 +466,7 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         elif isinstance(node.value, ast.Subscript):
             self._check_subscript_for_dangerous(node.value)
 
-    def _check_sequence_for_dangerous(self, node: Union[ast.List, ast.Tuple]) -> None:
+    def _check_sequence_for_dangerous(self, node: ast.List | ast.Tuple) -> None:
         """Check a list or tuple literal for dangerous builtin references.
 
         Handles: [eval], (eval,), [[eval]]

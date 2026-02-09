@@ -12,12 +12,12 @@ import concurrent.futures
 import sys
 import threading
 import time
-from typing import List
 
 import pytest
 
 # Import the module under test
 import main
+from main import _SymbolicCheckResult
 
 
 class TestSysModulesConcurrency:
@@ -40,8 +40,8 @@ def add(a: int, b: int) -> int:
 """
 
         num_threads = 50
-        exceptions: List[Exception] = []
-        results: List[int] = []
+        exceptions: list[Exception] = []
+        results: list[int] = []
 
         def create_and_use_module(thread_id: int) -> None:
             """Create a temporary module and use it."""
@@ -94,8 +94,8 @@ def multiply(x: int, y: int) -> int:
 """
 
         num_threads = 20
-        exceptions: List[Exception] = []
-        results: List[dict] = []
+        exceptions: list[Exception] = []
+        results: list[_SymbolicCheckResult] = []
 
         def run_analysis(thread_id: int) -> None:
             """Run symbolic analysis in a thread."""
@@ -267,8 +267,8 @@ def add_one_v2(x: int) -> int:
 
         num_threads = 15
         results = []
-        keyerrors: List[KeyError] = []
-        other_exceptions: List[Exception] = []
+        keyerrors: list[KeyError] = []
+        other_exceptions: list[Exception] = []
 
         def run_comparison(_: int) -> None:
             """Run function comparison."""
