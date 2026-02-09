@@ -647,6 +647,33 @@ class _DangerousCallVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Import(self, node: ast.Import) -> None:
+        """Check for blocked module imports.
+
+        This eliminates the need for a separate ast.walk() traversal
+        in validate_code(), improving performance.
+        """
+        if node.names:
+            module_name = node.names[0].name
+            if module_name:
+                base_module = module_name.split(".")[0]
+                if self._is_blocked_module(base_module):
+                    self.dangerous_calls.append(f"import {base_module}")
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        """Check for blocked module imports in 'from X import Y' statements.
+
+        This eliminates the need for a separate ast.walk() traversal
+        in validate_code(), improving performance.
+        """
+        # For ImportFrom, node.module can be None (relative imports)
+        if node.module and node.names:
+            base_module = node.module.split(".")[0]
+            if self._is_blocked_module(base_module):
+                self.dangerous_calls.append(f"from {base_module} import ...")
+        self.generic_visit(node)
+
 
 def validate_code(code: str) -> _ValidationResult:
     """Validate user code before execution.
@@ -697,31 +724,6 @@ def validate_code(code: str) -> _ValidationResult:
                     "valid": False,
                     "error": f"Blocked function reference: {dangerous}",
                 }
-
-        # Check for blocked imports
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                # Guard against empty names list (defensive programming)
-                if node.names:
-                    module_name = node.names[0].name
-                    if module_name:
-                        base_module = module_name.split(".")[0]
-                        if base_module in BLOCKED_MODULES:
-                            return {
-                                "valid": False,
-                                "error": f"Blocked module: {base_module}",
-                            }
-            elif isinstance(node, ast.ImportFrom):
-                # For ImportFrom, node.module can be None (relative imports)
-                # node.names should not be empty for valid Python syntax,
-                # but we check defensively
-                if node.module and node.names:
-                    base_module = node.module.split(".")[0]
-                    if base_module in BLOCKED_MODULES:
-                        return {
-                            "valid": False,
-                            "error": f"Blocked module: {base_module}",
-                        }
 
     except SyntaxError as e:
         return {
