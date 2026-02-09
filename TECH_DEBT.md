@@ -2,54 +2,6 @@
 
 This document tracks technical debt and cargo cult code identified in the codebase.
 
-## Test Infrastructure Over-Engineering
-
-### Location
-- `tests/integration/interfaces.py` (390 lines)
-- `tests/integration/dependency_container.py` (354 lines)
-- `tests/integration/request_executor.py` (283 lines)
-
-### Issue
-The integration tests use a custom dependency injection system with:
-- Abstract interfaces for all main module dependencies
-- A DI container with resolver patterns
-- Request executor abstraction
-
-This is over-engineered for what the tests need. Standard pytest fixtures with `unittest.mock` would be simpler and more maintainable.
-
-### Impact
-- Three files totaling ~1000 lines of complex DI infrastructure
-- 9 test files depend on this system
-- Makes tests harder to understand and modify
-- Non-standard pattern that differs from typical pytest usage
-
-### Resolution Path
-1. **Future work**: Replace DI container with simple pytest fixtures
-2. Use `unittest.mock.patch` for mocking dependencies
-3. Use `@pytest.fixture` for shared test state
-4. Pattern to follow:
-   ```python
-   @pytest.fixture
-   def mock_symbolic_analyzer():
-       with patch('main.SymbolicAnalyzer') as mock:
-           mock.return_value = {"status": "complete", ...}
-           yield mock
-   ```
-
-### Tests Using DI System
-- `test_architectural_improvements.py`
-- `test_crosshair_failure_harness.py`
-- `test_failing_integration_tests.py`
-- `test_load_harness.py`
-- `test_e2e_harness.py`
-- `test_memory_leak_detector.py`
-- `test_security_harness.py`
-- `test_runner.py`
-- `conftest.py` (partial)
-
-### Status
-Documented for future refactoring. Not critical to fix immediately as the system works, but adds maintenance burden.
-
 ## Completed Cleanup (v0.1.1)
 
 ### Phase 1: Security Fixes ✅

@@ -18,6 +18,8 @@ docs/adr/
 ├── 006-thread-safety.md         # Concurrency control approach
 ├── 007-coverage-calculation.md  # Path explosion handling
 ├── 008-validation-architecture.md # AST-based security validation
+├── 009-error-handling.md        # Structured error response pattern
+├── 010-contract-styles.md       # Contract verification style support
 └── accepted/                    # Historical/superseded ADRs
 ```
 
@@ -73,9 +75,12 @@ Each ADR MUST contain:
 | 006 | Thread Safety Architecture | Accepted | 2025-02-09 |
 | 007 | Coverage Calculation Method | Accepted | 2025-02-09 |
 | 008 | AST-Based Security Validation | Accepted | 2025-02-09 |
+| 009 | Error Handling Philosophy | Accepted | 2026-02-09 |
+| 010 | Contract Style Support | Accepted | 2026-02-09 |
 
 ## Version History
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 1.0 | 2025-02-09 | Initial ADR system establishment | System |
+| 1.1 | 2026-02-09 | Added ADR-009, ADR-010 (Error Handling, Contract Styles) | System |
