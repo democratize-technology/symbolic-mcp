@@ -58,11 +58,7 @@ sys.modules["crosshair.states"] = MagicMock()
 sys.modules["crosshair.tracers"] = MagicMock()
 sys.modules["crosshair.util"] = MagicMock()
 
-from main import (
-    ALLOWED_MODULES,
-    BLOCKED_MODULES,
-    validate_code,
-)
+from main import ALLOWED_MODULES, BLOCKED_MODULES, validate_code
 
 pytestmark = pytest.mark.mocked
 
@@ -70,7 +66,7 @@ pytestmark = pytest.mark.mocked
 class TestValidation:
     """Consolidated validation tests."""
 
-    def test_blocks_dangerous_builtins(self):
+    def test_blocks_dangerous_builtins(self) -> None:
         """Test that dangerous builtins (eval, exec, compile) are blocked."""
         dangerous_patterns = [
             ("eval('1+1')", "eval"),
@@ -81,9 +77,12 @@ class TestValidation:
         for code, expected_in_error in dangerous_patterns:
             result = validate_code(code)
             assert result["valid"] is False, f"{expected_in_error} should be blocked"
-            assert "blocked" in result["error"].lower() or expected_in_error in result["error"].lower()
+            assert (
+                "blocked" in result["error"].lower()
+                or expected_in_error in result["error"].lower()
+            )
 
-    def test_blocks_dangerous_imports(self):
+    def test_blocks_dangerous_imports(self) -> None:
         """Test that dangerous module imports are blocked."""
         dangerous_modules = ["os", "sys", "subprocess", "pickle", "socket"]
 
@@ -93,11 +92,11 @@ class TestValidation:
             assert result["valid"] is False, f"{module} import should be blocked"
             assert module in result["error"] or "blocked" in result["error"].lower()
 
-    def test_blocks_builtins_access(self):
+    def test_blocks_builtins_access(self) -> None:
         """Test that dangerous __builtins__ access is blocked."""
         dangerous_access = [
             ('x = __builtins__["eval"]', "__builtins__"),
-            ('x = __builtins__.eval', "__builtins__"),
+            ("x = __builtins__.eval", "__builtins__"),
             ('x = getattr(__builtins__, "eval")', "__builtins__"),
         ]
 
@@ -109,20 +108,23 @@ class TestValidation:
                 or "blocked" in result["error"].lower()
             )
 
-    def test_blocks_dunder_methods(self):
+    def test_blocks_dunder_methods(self) -> None:
         """Test that dangerous dunder method access is blocked."""
         # __import__ is definitely blocked
         result = validate_code('x = __import__("os")')
         assert result["valid"] is False, "__import__ should be blocked"
-        assert "__import__" in result["error"].lower() or "blocked" in result["error"].lower()
+        assert (
+            "__import__" in result["error"].lower()
+            or "blocked" in result["error"].lower()
+        )
 
-    def test_blocks_security_bypass_attempts(self):
+    def test_blocks_security_bypass_attempts(self) -> None:
         """Test that various security bypass attempts are blocked."""
         bypass_attempts = [
             "[eval][0](1)",  # List indexing
             "(eval,)[0](1)",  # Tuple indexing
             '{"f": eval}["f"](1)',  # Dict lookup
-            '[[eval]][0][0](1)',  # Nested list
+            "[[eval]][0][0](1)",  # Nested list
             "(lambda: __builtins__.eval)('1+1')",  # Lambda wrapping
             '(__builtins__)["eval"]("1+1")',  # Parenthesized
             "(__builtins__ or {})['eval']('1+1')",  # Boolean operation
@@ -130,9 +132,11 @@ class TestValidation:
 
         for bypass in bypass_attempts:
             result = validate_code(bypass)
-            assert result["valid"] is False, f"Bypass attempt should be blocked: {bypass}"
+            assert (
+                result["valid"] is False
+            ), f"Bypass attempt should be blocked: {bypass}"
 
-    def test_accepts_safe_code(self):
+    def test_accepts_safe_code(self) -> None:
         """Test that safe code is accepted."""
         safe_code_examples = [
             "def f(x): return x + 1",
@@ -154,7 +158,7 @@ class Calculator:
             result = validate_code(code)
             assert result["valid"] is True, f"Safe code should be accepted: {code}"
 
-    def test_rejects_malformed_code(self):
+    def test_rejects_malformed_code(self) -> None:
         """Test that malformed code is rejected with proper error."""
         malformed_examples = [
             ("def foo(\n", "Syntax"),  # Incomplete function
@@ -164,30 +168,34 @@ class Calculator:
 
         for code, expected_error in malformed_examples:
             result = validate_code(code)
-            assert result["valid"] is False, f"Malformed code should be rejected: {code}"
-            assert expected_error in result["error"] or "error" in result["error"].lower()
+            assert (
+                result["valid"] is False
+            ), f"Malformed code should be rejected: {code}"
+            assert (
+                expected_error in result["error"] or "error" in result["error"].lower()
+            )
 
 
 class TestModuleConfiguration:
     """Tests for ALLOWED_MODULES and BLOCKED_MODULES configuration."""
 
-    def test_module_lists_are_frozensets(self):
+    def test_module_lists_are_frozensets(self) -> None:
         """Test that module lists are immutable frozensets."""
         assert isinstance(ALLOWED_MODULES, frozenset)
         assert isinstance(BLOCKED_MODULES, frozenset)
 
-    def test_no_module_overlap(self):
+    def test_no_module_overlap(self) -> None:
         """Test that no module appears in both allowed and blocked lists."""
         overlap = ALLOWED_MODULES.intersection(BLOCKED_MODULES)
         assert len(overlap) == 0, f"Modules in both lists: {overlap}"
 
-    def test_safe_modules_allowed(self):
+    def test_safe_modules_allowed(self) -> None:
         """Test that common safe modules are allowed."""
         expected_safe = {"math", "random", "datetime", "json", "re", "collections"}
         for module in expected_safe:
             assert module in ALLOWED_MODULES, f"Safe module not allowed: {module}"
 
-    def test_dangerous_modules_blocked(self):
+    def test_dangerous_modules_blocked(self) -> None:
         """Test that common dangerous modules are blocked."""
         expected_dangerous = {"os", "sys", "subprocess", "pickle", "socket"}
         for module in expected_dangerous:

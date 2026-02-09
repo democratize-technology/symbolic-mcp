@@ -35,7 +35,7 @@ from typing_extensions import TypedDict
 
 # Version information
 try:
-    from ._version import __version__  # type: ignore[import-not-found]
+    from ._version import __version__
 except ImportError:
     __version__ = "0.1.0"
 
@@ -1472,7 +1472,7 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool()
+@mcp.tool()  # type: ignore[misc]
 def symbolic_check(
     code: str,
     function_name: str,
@@ -1491,7 +1491,7 @@ def symbolic_check(
     return logic_symbolic_check(code, function_name, timeout_seconds)
 
 
-@mcp.tool()
+@mcp.tool()  # type: ignore[misc]
 def find_path_to_exception(
     code: str,
     function_name: str,
@@ -1504,7 +1504,7 @@ def find_path_to_exception(
     )
 
 
-@mcp.tool()
+@mcp.tool()  # type: ignore[misc]
 def compare_functions(
     code: str, function_a: str, function_b: str, timeout_seconds: int = 60
 ) -> _FunctionComparisonResult:
@@ -1512,7 +1512,7 @@ def compare_functions(
     return logic_compare_functions(code, function_a, function_b, timeout_seconds)
 
 
-@mcp.tool()
+@mcp.tool()  # type: ignore[misc]
 def analyze_branches(
     code: str,
     function_name: str,
@@ -1535,7 +1535,7 @@ def analyze_branches(
     )
 
 
-@mcp.tool()
+@mcp.tool()  # type: ignore[misc]
 def health_check() -> _HealthCheckResult:
     """Health check for the Symbolic Execution MCP server.
 

@@ -3,12 +3,13 @@ Shared pytest configuration and fixtures for all tests.
 """
 
 import os
-import sys
+from typing import Generator
 
 import pytest
+from _pytest.config import Config
 
 
-def pytest_configure(config):
+def pytest_configure(config: Config) -> None:
     """Clear SYMBOLIC_* environment variables before pytest imports any test modules.
 
     This hook runs before test collection and imports, ensuring that the main module
@@ -30,8 +31,8 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "mocked: Tests using CrossHair mocks")
 
 
-@pytest.fixture(autouse=True)
-def clean_symbolic_env_per_test():
+@pytest.fixture(autouse=True)  # type: ignore[misc]
+def clean_symbolic_env_per_test() -> Generator[None, None, None]:
     """Clear SYMBOLIC_* environment variables before each test.
 
     This prevents tests from polluting each other's environment.

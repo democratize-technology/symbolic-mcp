@@ -63,8 +63,8 @@ class TestRealCrossHairValidation:
     with actual symbolic execution, not mocks.
     """
 
-    @pytest.mark.integration
-    def test_real_crosshair_simple_contract(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_simple_contract(self) -> None:
         """Test a simple contract with real CrossHair."""
         code = """
 def add_positive(a: int, b: int) -> int:
@@ -76,20 +76,23 @@ def add_positive(a: int, b: int) -> int:
     return a + b
 """
 
-        result = symbolic_check(code=code, function_name="add_positive", timeout_seconds=10)
+        result = symbolic_check(
+            code=code, function_name="add_positive", timeout_seconds=10
+        )
 
         # Should be verified (no counterexample)
-        assert result["status"] in ["verified", "error"], (
-            f"Expected verified or error, got {result['status']}"
-        )
+        assert result["status"] in [
+            "verified",
+            "error",
+        ], f"Expected verified or error, got {result['status']}"
 
         # Check structure
         assert "paths_explored" in result
         assert "time_seconds" in result
         assert isinstance(result["paths_explored"], int)
 
-    @pytest.mark.integration
-    def test_real_crosshair_finds_counterexample(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_finds_counterexample(self) -> None:
         """Test that real CrossHair finds actual counterexamples."""
         code = """
 def buggy_division(x: int) -> int:
@@ -99,16 +102,20 @@ def buggy_division(x: int) -> int:
     return 10 // (x - 5)
 """
 
-        result = symbolic_check(code=code, function_name="buggy_division", timeout_seconds=10)
+        result = symbolic_check(
+            code=code, function_name="buggy_division", timeout_seconds=10
+        )
 
         # Should find a counterexample (x=5 causes division by zero)
         # Note: CrossHair may not always find this depending on analysis
-        assert result["status"] in ["counterexample", "verified", "error"], (
-            f"Unexpected status: {result['status']}"
-        )
+        assert result["status"] in [
+            "counterexample",
+            "verified",
+            "error",
+        ], f"Unexpected status: {result['status']}"
 
-    @pytest.mark.integration
-    def test_real_crosshair_postcondition_violation(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_postcondition_violation(self) -> None:
         """Test detecting postcondition violations with real CrossHair."""
         code = """
 def always_return_positive(x: int) -> int:
@@ -134,21 +141,23 @@ def always_return_positive(x: int) -> int:
             assert "args" in ce
             assert "violation" in ce
 
-    @pytest.mark.integration
-    def test_real_crosshair_handles_function_without_contract(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_handles_function_without_contract(self) -> None:
         """Test that real CrossHair handles functions without contracts."""
         code = """
 def no_contract(x: int) -> int:
     return x * 2
 """
 
-        result = symbolic_check(code=code, function_name="no_contract", timeout_seconds=10)
+        result = symbolic_check(
+            code=code, function_name="no_contract", timeout_seconds=10
+        )
 
         # Should handle gracefully - no contract means nothing to verify
         assert result["status"] in ["verified", "error"]
 
-    @pytest.mark.integration
-    def test_real_crosshair_precondition_violation(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_precondition_violation(self) -> None:
         """Test detecting precondition violations."""
         code = """
 def divide_with_pre(a: int, b: int) -> int:
@@ -159,13 +168,15 @@ def divide_with_pre(a: int, b: int) -> int:
     return a // b
 """
 
-        result = symbolic_check(code=code, function_name="divide_with_pre", timeout_seconds=10)
+        result = symbolic_check(
+            code=code, function_name="divide_with_pre", timeout_seconds=10
+        )
 
         # Should verify the function satisfies its contract
         assert result["status"] in ["verified", "error"]
 
-    @pytest.mark.integration
-    def test_real_crosshair_complex_function(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_complex_function(self) -> None:
         """Test analyzing a more complex function."""
         code = """
 def complex_check(x: int, y: int) -> int:
@@ -201,8 +212,8 @@ class TestRealCrossHairErrorHandling:
     Tests for error handling with real CrossHair.
     """
 
-    @pytest.mark.integration
-    def test_real_crosshair_syntax_error(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_syntax_error(self) -> None:
         """Test handling syntax errors with real CrossHair."""
         code = "def broken(\n"  # Incomplete function
 
@@ -211,8 +222,8 @@ class TestRealCrossHairErrorHandling:
         assert result["status"] == "error"
         assert "SyntaxError" in result.get("error_type", "")
 
-    @pytest.mark.integration
-    def test_real_crosshair_function_not_found(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_function_not_found(self) -> None:
         """Test handling of missing function."""
         code = "def existing(x): return x"
 
@@ -223,8 +234,8 @@ class TestRealCrossHairErrorHandling:
         assert result["status"] == "error"
         assert "NameError" in result.get("error_type", "")
 
-    @pytest.mark.integration
-    def test_real_crosshair_blocked_import(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_blocked_import(self) -> None:
         """Test that blocked imports are caught before CrossHair."""
         code = """
 import os
@@ -232,7 +243,9 @@ def restricted():
     return os.getcwd()
 """
 
-        result = symbolic_check(code=code, function_name="restricted", timeout_seconds=5)
+        result = symbolic_check(
+            code=code, function_name="restricted", timeout_seconds=5
+        )
 
         # Should fail validation before reaching CrossHair
         assert result["status"] == "error"
@@ -245,8 +258,8 @@ class TestRealCrossHairCoverageEstimation:
     Tests for coverage estimation with real CrossHair.
     """
 
-    @pytest.mark.integration
-    def test_real_crosshair_coverage_for_simple_function(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_coverage_for_simple_function(self) -> None:
         """Test coverage estimation for a simple function."""
         code = """
 def simple(x: int) -> int:
@@ -264,8 +277,8 @@ def simple(x: int) -> int:
             assert isinstance(result["coverage_estimate"], float)
             assert 0.0 <= result["coverage_estimate"] <= 1.0
 
-    @pytest.mark.integration
-    def test_real_crosshair_paths_explored(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_paths_explored(self) -> None:
         """Test that paths explored is counted correctly."""
         code = """
 def multi_path(x: int) -> int:
@@ -280,7 +293,9 @@ def multi_path(x: int) -> int:
         return 3
 """
 
-        result = symbolic_check(code=code, function_name="multi_path", timeout_seconds=10)
+        result = symbolic_check(
+            code=code, function_name="multi_path", timeout_seconds=10
+        )
 
         if result["status"] != "error":
             # Should have explored at least one path
@@ -292,8 +307,8 @@ class TestRealCrossHairWithValidation:
     Tests that verify validate_code() works correctly with real CrossHair.
     """
 
-    @pytest.mark.integration
-    def test_validate_code_blocks_dangerous_before_crosshair(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_validate_code_blocks_dangerous_before_crosshair(self) -> None:
         """Verify that validate_code() blocks dangerous code before CrossHair."""
         dangerous_codes = [
             "import os\ndef f(): pass",
@@ -305,12 +320,10 @@ class TestRealCrossHairWithValidation:
         for code in dangerous_codes:
             validation = validate_code(code)
             # Should be rejected by validation
-            assert not validation["valid"], (
-                f"Code should be rejected: {code}"
-            )
+            assert not validation["valid"], f"Code should be rejected: {code}"
 
-    @pytest.mark.integration
-    def test_validate_code_allows_safe_code_for_crosshair(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_validate_code_allows_safe_code_for_crosshair(self) -> None:
         """Verify that validate_code() allows safe code for CrossHair."""
         safe_codes = [
             "def f(x): return x + 1",
@@ -334,8 +347,8 @@ class TestRealCrossHairTimeoutHandling:
     Tests for timeout handling with real CrossHair.
     """
 
-    @pytest.mark.integration
-    def test_real_crosshair_respects_short_timeout(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_respects_short_timeout(self) -> None:
         """Test that CrossHair respects timeout settings."""
         code = """
 def infinite_loop(x: int) -> int:
@@ -350,13 +363,15 @@ def infinite_loop(x: int) -> int:
 """
 
         # Use very short timeout
-        result = symbolic_check(code=code, function_name="infinite_loop", timeout_seconds=1)
+        result = symbolic_check(
+            code=code, function_name="infinite_loop", timeout_seconds=1
+        )
 
         # Should either complete or timeout (not hang)
         assert result["status"] in ["verified", "error", "timeout"]
 
-    @pytest.mark.integration
-    def test_real_crosshair_completes_within_timeout(self):
+    @pytest.mark.integration  # type: ignore[misc]
+    def test_real_crosshair_completes_within_timeout(self) -> None:
         """Test that analysis completes within specified timeout."""
         code = """
 def quick_check(x: int) -> int:
