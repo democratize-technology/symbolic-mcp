@@ -13,12 +13,28 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from typing_extensions import NotRequired, TypedDict
+
+
+class _CompatibilityResults(TypedDict):
+    """Type definition for compatibility results dictionary."""
+
+    version: str | None
+    compatibility: str
+    issues: list[str]
+    recommendations: list[str]
+    api_compatibility: dict[str, Any]
+    dependency_compatibility: dict[str, Any]
+    test_results: dict[str, Any]
+    installation: NotRequired[dict[str, bool | str | None]]
+    import_compatibility: NotRequired[dict[str, bool]]
+
 
 class FastMCPCompatibilityChecker:
     """FastMCP 2.0 compatibility checker"""
 
     def __init__(self) -> None:
-        self.compatibility_results = {
+        self.compatibility_results: _CompatibilityResults = {
             "version": None,
             "compatibility": "unknown",
             "issues": [],
@@ -231,7 +247,9 @@ class FastMCPCompatibilityChecker:
 
         return test_results
 
-    def generate_recommendations(self, compatibility_results: dict) -> list[str]:
+    def generate_recommendations(
+        self, compatibility_results: _CompatibilityResults
+    ) -> list[str]:
         """Generate upgrade/recommendation suggestions"""
         recommendations = []
 
@@ -297,13 +315,15 @@ class FastMCPCompatibilityChecker:
 
     def run_full_compatibility_check(self) -> dict[str, Any]:
         """Run comprehensive compatibility check"""
-        results = self.compatibility_results.copy()
+        results: dict[str, Any] = dict(self.compatibility_results)
 
         # Check installation
         results["installation"] = self.check_fastmcp_installation()
 
         if results["installation"]["installed"]:
             version = results["installation"]["version"]
+            if version is None:
+                version = "unknown"
 
             # Check version compatibility
             compatibility, issues = self.check_version_compatibility(version)
@@ -319,7 +339,9 @@ class FastMCPCompatibilityChecker:
             results["test_results"] = self.run_compatibility_tests()
 
         # Generate recommendations
-        results["recommendations"] = self.generate_recommendations(results)
+        results["recommendations"] = self.generate_recommendations(
+            results  # type: ignore[arg-type]
+        )
 
         return results
 
