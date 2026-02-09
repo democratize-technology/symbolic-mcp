@@ -36,10 +36,12 @@ symbolic_check(
 
 **Returns:**
 Dictionary containing:
-- `status` (str): "success", "violation_found", or "error"
-- `violations` (list): Contract violations if found
-- `message` (str): Human-readable result description
-- `execution_time` (float): Time taken for analysis
+- `status` (str): "verified", "counterexample", "timeout", or "error"
+- `counterexamples` (list): List of counterexamples if contract violations found
+- `paths_explored` (int): Total execution paths analyzed
+- `paths_verified` (int): Paths that passed all checks
+- `time_seconds` (float): Time taken for analysis
+- `coverage_estimate` (float): Estimated fraction of paths explored (0.0-1.0)
 
 **Example:**
 ```python
@@ -81,10 +83,11 @@ find_path_to_exception(
 
 **Returns:**
 Dictionary containing:
-- `status` (str): "found", "not_found", or "error"
-- `counterexample` (dict): Input values causing the exception (if found)
-- `exception_message` (str): The exception message that would be raised
-- `execution_time` (float): Time taken for analysis
+- `status` (str): "found", "unreachable", or "error"
+- `triggering_inputs` (list): List of counterexamples causing the exception (if found)
+- `paths_to_exception` (int): Number of paths that trigger the exception
+- `total_paths_explored` (int): Total execution paths analyzed
+- `time_seconds` (float): Time taken for analysis
 
 **Example:**
 ```python
@@ -123,11 +126,12 @@ compare_functions(
 
 **Returns:**
 Dictionary containing:
-- `status` (str): "equivalent", "not_equivalent", or "error"
-- `counterexample` (dict): Input where functions differ (if not equivalent)
-- `outputs` (dict): Different outputs for the counterexample
+- `status` (str): "equivalent", "different", or "error"
+- `distinguishing_input` (dict): Input where functions differ (if different)
+- `paths_compared` (int): Number of paths analyzed for equivalence
+- `confidence` (str): "proven", "high", or "partial"
+- `error_type` (str): Error type if status is "error"
 - `message` (str): Human-readable comparison result
-- `execution_time` (float): Time taken for analysis
 
 **Example:**
 ```python
@@ -138,7 +142,7 @@ def add_v1(x: int, y: int) -> int:
 def add_v2(x: int, y: int) -> int:
     return y + x
 """, "add_v1", "add_v2", 60)
-# Returns: {"status": "equivalent", "message": "Functions are semantically equivalent"}
+# Returns: {"status": "equivalent", "confidence": "proven"}
 ```
 
 **Raises:**
@@ -156,7 +160,8 @@ Enumerate all branch conditions in a function and report static reachability ana
 analyze_branches(
     code: str,
     function_name: str,
-    timeout_seconds: int = 30
+    timeout_seconds: int = 30,
+    symbolic_reachability: bool = False
 ) -> Dict[str, Any]
 ```
 
@@ -164,14 +169,18 @@ analyze_branches(
 - `code` (str): Python source code containing the function
 - `function_name` (str): Name of the function to analyze
 - `timeout_seconds` (int, optional): Maximum execution time in seconds (default: 30)
+- `symbolic_reachability` (bool, optional): Use symbolic execution to prove reachability (default: False)
 
 **Returns:**
 Dictionary containing:
-- `status` (str): "success" or "error"
-- `branches` (list): List of branch conditions found
-- `reachability` (dict): Reachability status for each branch
-- `dead_code` (list): Unreachable code locations (if any)
-- `execution_time` (float): Time taken for analysis
+- `status` (str): "complete" or "error"
+- `branches` (list): List of branch conditions with line numbers and reachability
+- `total_branches` (int): Total number of conditional branches found
+- `reachable_branches` (int): Number of reachable branches
+- `dead_code_lines` (list): Line numbers of unreachable code
+- `cyclomatic_complexity` (int): McCabe complexity score
+- `time_seconds` (float): Time taken for analysis
+- `analysis_mode` (str): "static" or "symbolic"
 
 **Example:**
 ```python
@@ -206,14 +215,13 @@ None
 
 **Returns:**
 Dictionary containing comprehensive server health information:
-- `status` (str): Overall health status ("healthy", "degraded", "unhealthy")
-- `timestamp` (float): Current Unix timestamp
-- `uptime_seconds` (float): Server uptime in seconds
-- `version` (str): FastMCP version
-- `resource_usage` (dict): Memory and CPU utilization
-- `crosshair_status` (dict): CrossHair integration health
-- `security_status` (dict): Security validation results
-- `performance_metrics` (dict): Response time statistics
+- `status` (str): Overall health status ("healthy")
+- `version` (str): Symbolic MCP server version
+- `python_version` (str): Python interpreter version
+- `crosshair_version` (str): CrossHair library version
+- `z3_version` (str): Z3 solver version
+- `platform` (str): Operating system and architecture
+- `memory_usage_mb` (float): Current memory consumption in MB
 
 **Example:**
 ```python
@@ -238,8 +246,7 @@ All tools follow a consistent error handling pattern:
 {
   "status": "error",
   "error_type": "ValueError",
-  "error_message": "Detailed error description",
-  "execution_time": 0.123
+  "message": "Detailed error description"
 }
 ```
 
@@ -261,10 +268,11 @@ All tools follow a consistent error handling pattern:
 - `analyze_branches`: 30 seconds
 - `health_check`: 5 seconds (fast diagnostic)
 
-**Resource Limits (Section 5.2 Compliance):**
-- Maximum memory: 512 MB per operation
-- Maximum execution time: 60 seconds (configurable)
-- Concurrent requests: 10 (configurable via `FASTMCP_MAX_CONCURRENT_REQUESTS`)
+**Resource Limits:**
+- Maximum memory: 2048 MB per operation (configurable via `SYMBOLIC_MEMORY_LIMIT_MB`)
+- Maximum code size: 64 KB (configurable via `SYMBOLIC_CODE_SIZE_LIMIT`)
+- Maximum execution time: Configurable per tool (default 30-60 seconds)
+- Per-path timeout: 10% of total timeout for path exploration
 
 ---
 
@@ -286,8 +294,9 @@ See [SECURITY.md](../SECURITY.md) for detailed security architecture.
 
 **Current Version:** 0.1.0
 **FastMCP Compatibility:** >= 2.0.0
-**Python Requirement:** >= 3.10
-**CrossHair Requirement:** >= 0.0.72
+**Python Requirement:** >= 3.11
+**CrossHair Requirement:** >= 0.0.70
+**Z3 Requirement:** >= 4.12.0
 
 ---
 

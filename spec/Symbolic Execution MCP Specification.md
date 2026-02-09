@@ -2,7 +2,7 @@
 <!-- Copyright (c) 2025 Symbolic MCP Contributors -->
 # Symbolic Execution MCP Server Specification
 
-**Version:** 1.0
+**Version:** 0.1.0
 **Target Framework:** FastMCP 2.0 (Python)
 **Core Library:** CrossHair (`crosshair-tool`)
 **Classification:** Empirical Verification / Path-Sensitive Analysis
