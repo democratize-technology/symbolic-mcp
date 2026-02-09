@@ -67,9 +67,9 @@ class FastMCPCompatibilityChecker:
         except Exception as e:
             return "error", [f"Version comparison failed: {e}"]
 
-    def check_api_compatibility(self) -> dict[str, dict[str, bool]]:
+    def check_api_compatibility(self) -> dict[str, dict[str, bool | str]]:
         """Check FastMCP API compatibility"""
-        api_checks = {}
+        api_checks: dict[str, dict[str, bool | str]] = {}
 
         try:
             import fastmcp
