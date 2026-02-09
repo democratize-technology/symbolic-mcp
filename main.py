@@ -1068,47 +1068,6 @@ def logic_symbolic_check(
     return analyzer.analyze(code, function_name)
 
 
-def _extract_function_signature(
-    module: types.ModuleType, function_name: str
-) -> Optional[str]:
-    """Extract the signature of a function for wrapper generation.
-
-    Returns a string like '(x: int, y: int) -> int' or None if not found.
-
-    Note:
-        Returns None for builtin functions and C extensions that don't support
-        inspect.signature(), allowing callers to fall back to a generic
-        "(*args, **kwargs)" signature.
-    """
-    if not hasattr(module, function_name):
-        return None
-
-    func = getattr(module, function_name)
-    try:
-        sig = inspect.signature(func)
-    except ValueError:
-        # inspect.signature() raises ValueError for builtin functions and
-        # C extensions that don't have signature metadata. Return None to
-        # trigger fallback to generic "(*args, **kwargs)" signature.
-        return None
-
-    # Build parameter string with type hints
-    params = []
-    for name, param in sig.parameters.items():
-        param_str = name
-        if param.annotation != inspect.Parameter.empty:
-            param_str += f": {param.annotation.__name__ if hasattr(param.annotation, '__name__') else str(param.annotation)}"
-        if param.default != inspect.Parameter.empty:
-            param_str += f" = {repr(param.default)}"
-        params.append(param_str)
-
-    return_str = ""
-    if sig.return_annotation != inspect.Signature.empty:
-        return_str = f" -> {sig.return_annotation.__name__ if hasattr(sig.return_annotation, '__name__') else str(sig.return_annotation)}"
-
-    return f"({', '.join(params)}){return_str}"
-
-
 def _extract_function_signature_and_params(
     module: types.ModuleType, function_name: str
 ) -> tuple[Optional[str], list[str]]:
@@ -1117,9 +1076,6 @@ def _extract_function_signature_and_params(
     Returns a tuple of (signature_string, parameter_names).
     signature_string is like '(x: int, y: int) -> int' or None if not found.
     parameter_names is a list of parameter names (e.g., ['x', 'y']).
-
-    This is more efficient than calling _extract_function_signature() and
-    then inspect.signature() again, as it only calls inspect.signature() once.
     """
     if not hasattr(module, function_name):
         return None, []
@@ -1155,9 +1111,6 @@ def logic_find_path_to_exception(
     code: str, function_name: str, exception_type: str, timeout_seconds: int
 ) -> _ExceptionPathResult:
     """Find concrete inputs that cause a specific exception type."""
-    # First, load the module to get the function signature
-    start_time = time.perf_counter()
-
     validation = validate_code(code)
     if not validation["valid"]:
         return {

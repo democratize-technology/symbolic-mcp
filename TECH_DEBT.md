@@ -79,3 +79,14 @@ Documented for future refactoring. Not critical to fix immediately as the system
 ### Phase 7: Pointless Cleanup ✅
 - Removed meaningless `finally` block that just did `analyzer = None`
 - Python's GC handles this automatically
+
+### Phase 8: Unused Variable Removal ✅ (2026-02-09)
+- **TD-SYM-002**: Removed unused `start_time` variable in `logic_find_path_to_exception()`
+- Variable was assigned but never used; timing comes from analyzer result instead
+- Location: main.py:1115 (removed)
+
+### Phase 9: Dead Code Removal ✅ (2026-02-09)
+- **TD-SYM-001**: Removed `_extract_function_signature()` function (39 lines)
+- Function was replaced by more efficient `_extract_function_signature_and_params()`
+- Removed stale docstring reference in `_extract_function_signature_and_params()`
+- Total: ~40 lines removed
