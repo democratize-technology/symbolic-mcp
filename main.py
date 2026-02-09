@@ -673,8 +673,10 @@ def validate_code(code: str) -> _ValidationResult:
         }
 
     # Check for blocked imports and dangerous function calls using AST
+    # Use textwrap.dedent for consistency with _temporary_module and logic_analyze_branches
+    # This allows users to pass indented code snippets (e.g., from markdown blocks)
     try:
-        tree = ast.parse(code)
+        tree = ast.parse(textwrap.dedent(code))
 
         # First check for dangerous function calls
         visitor = _DangerousCallVisitor()
