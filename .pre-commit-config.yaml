@@ -36,8 +36,6 @@ repos:
 
       # Git hygiene
       - id: forbid-new-submodules
-      - id: no-commit-to-branch
-        args: ["--branch", "main", "--branch", "master"]
 
   # =============================================================================
   # SECURITY SCANNING

@@ -33,7 +33,7 @@ import os
 import shutil
 import sys
 import tempfile
-from typing import Any, Dict, Generator
+from typing import Generator
 
 import pytest
 
@@ -83,7 +83,7 @@ def temp_project_dir() -> Generator[str, None, None]:
 
 
 @pytest.fixture(scope="session")
-def test_code_samples() -> Dict[str, str]:
+def test_code_samples() -> dict[str, str]:
     """Provide common code samples for testing"""
     return {
         "simple_function": """

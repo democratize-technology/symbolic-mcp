@@ -49,8 +49,8 @@ logger = logging.getLogger(__name__)
 class _Counterexample(TypedDict):
     """A counterexample found during symbolic execution."""
 
-    args: dict[str, Any]
-    kwargs: dict[str, Any]
+    args: dict[str, int | bool | None | str]
+    kwargs: dict[str, int | bool | None | str]
     violation: str
     actual_result: str
     path_condition: str
@@ -882,8 +882,8 @@ class SymbolicAnalyzer:
                             # Parse the message to extract args if present
                             # Message format: "false when calling func(arg1, arg2) (which returns ...)"
                             # Or: "ExceptionType: when calling func(arg1, arg2)"
-                            args: dict[str, Any] = {}
-                            kwargs: dict[str, Any] = {}
+                            args: dict[str, int | bool | None | str] = {}
+                            kwargs: dict[str, int | bool | None | str] = {}
                             actual_result = ""
                             path_condition = ""
 
@@ -1453,7 +1453,7 @@ def logic_analyze_branches(
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app: object) -> AsyncGenerator[dict[str, Any], None]:
+async def lifespan(app: object) -> AsyncGenerator[dict[str, object], None]:
     """Manage server lifespan."""
     try:
         yield {}
