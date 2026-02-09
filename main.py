@@ -42,6 +42,11 @@ except ImportError:
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# --- Constants ---
+
+# Default timeout for CrossHair analysis in seconds
+DEFAULT_ANALYSIS_TIMEOUT_SECONDS = 30
+
 
 # --- Type Definitions ---
 
@@ -804,7 +809,7 @@ def _temporary_module(code: str) -> Generator[types.ModuleType, None, None]:
 class SymbolicAnalyzer:
     """Analyzes code using CrossHair symbolic execution."""
 
-    def __init__(self, timeout_seconds: int = 30):
+    def __init__(self, timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS):
         self.timeout = timeout_seconds
 
     # Use the module-level context manager for consistency
@@ -1051,7 +1056,9 @@ class SymbolicAnalyzer:
 
 
 def logic_symbolic_check(
-    code: str, function_name: str, timeout_seconds: int = 30
+    code: str,
+    function_name: str,
+    timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS,
 ) -> _SymbolicCheckResult:
     """Symbolically verify that a function satisfies its contract.
 
@@ -1350,7 +1357,7 @@ def _equivalence_check{func_sig}:
 def logic_analyze_branches(
     code: str,
     function_name: str,
-    timeout_seconds: int = 30,
+    timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS,
     symbolic_reachability: bool = False,
 ) -> _BranchAnalysisResult:
     """Enumerate branch conditions and report static or symbolic reachability.
@@ -1514,14 +1521,16 @@ mcp = FastMCP(
 
 @mcp.tool()
 def symbolic_check(
-    code: str, function_name: str, timeout_seconds: int = 30
+    code: str,
+    function_name: str,
+    timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS,
 ) -> _SymbolicCheckResult:
     """Symbolically verify that a function satisfies its contract.
 
     Args:
         code: Python function definition with contracts
         function_name: Name of function to analyze
-        timeout_seconds: Analysis timeout in seconds (default: 30)
+        timeout_seconds: Analysis timeout in seconds (default: DEFAULT_ANALYSIS_TIMEOUT_SECONDS)
 
     Returns:
         SymbolicCheckResult with status, counterexamples, paths explored, etc.
@@ -1531,7 +1540,10 @@ def symbolic_check(
 
 @mcp.tool()
 def find_path_to_exception(
-    code: str, function_name: str, exception_type: str, timeout_seconds: int = 30
+    code: str,
+    function_name: str,
+    exception_type: str,
+    timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS,
 ) -> _ExceptionPathResult:
     """Find concrete inputs that cause a specific exception type to be raised."""
     return logic_find_path_to_exception(
@@ -1551,7 +1563,7 @@ def compare_functions(
 def analyze_branches(
     code: str,
     function_name: str,
-    timeout_seconds: int = 30,
+    timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS,
     symbolic_reachability: bool = False,
 ) -> _BranchAnalysisResult:
     """Enumerate branch conditions and report static or symbolic reachability.
@@ -1559,7 +1571,7 @@ def analyze_branches(
     Args:
         code: Python function definition to analyze
         function_name: Name of function to analyze
-        timeout_seconds: Analysis timeout in seconds (default: 30)
+        timeout_seconds: Analysis timeout in seconds (default: DEFAULT_ANALYSIS_TIMEOUT_SECONDS)
         symbolic_reachability: If True, use symbolic execution to prove reachability (default: False)
 
     Returns:
