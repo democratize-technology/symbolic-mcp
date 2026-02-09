@@ -190,9 +190,9 @@ class FastMCPCompatibilityChecker:
 
         return dependency_checks
 
-    def run_compatibility_tests(self) -> dict[str, bool]:
+    def run_compatibility_tests(self) -> dict[str, bool | str]:
         """Run basic FastMCP compatibility tests"""
-        test_results = {}
+        test_results: dict[str, bool | str] = {}
 
         try:
             import fastmcp
