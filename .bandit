@@ -1,30 +1,25 @@
 # =============================================================================
-# Symbolic MCP - Bandit Configuration (YAML format)
+# Symbolic MCP - Bandit Configuration
 # Security-focused symbolic execution MCP server
 # =============================================================================
 
+[bandit]
 # Exclude directories from security scanning
-exclude_dirs:
-  - /tests/
-  - /build/
-  - /dist/
-  - /docs/
-  - /.git/
-  - /__pycache__/
-  - /.pytest_cache/
-  - /.tox/
+exclude =
+    tests/
+    build/
+    dist/
+    docs/
+    .git/
+    __pycache__/
+    .pytest_cache/
+    .tox/
 
-# List of tests to skip
+# Tests to skip (legitimate usage for symbolic execution)
 # B101: assert_used (we use assertions in tests and defensive programming)
 # B601: shell_injection_process (controlled usage in symbolic execution)
 # B602: shell_injection_subprocess (controlled usage in symbolic execution)
 # B603: subprocess_without_shell_equals_true (controlled usage)
 # B401: import_subprocess (subprocess is used legitimately)
 # B404: import_pickle (pickle is used in some contexts legitimately)
-skips:
-  - B101
-  - B601
-  - B602
-  - B603
-  - B401
-  - B404
+skips = B101,B601,B602,B603,B401,B404

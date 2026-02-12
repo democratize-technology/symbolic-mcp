@@ -44,7 +44,7 @@ repos:
     rev: 1.7.10
     hooks:
       - id: bandit
-        args: ["-r", ".", "-x", "tests/", "-ll", "-c", ".bandit"]
+        args: ["-r", ".", "-ll"]
         pass_filenames: false
 
   # Note: detect-secrets requires local installation and baseline setup
@@ -77,7 +77,7 @@ repos:
     rev: 7.1.1
     hooks:
       - id: flake8
-        args: ["--max-line-length=88", "--extend-ignore=E203,W503,F401,F403,F405,E741,E722,C901,E701"]
+        args: ["--config=.flake8"]
 
   # =============================================================================
   # TYPE CHECKING
@@ -86,7 +86,7 @@ repos:
     rev: v1.13.0
     hooks:
       - id: mypy
-        args: ["--python-version=3.11", "--strict", "--warn-unreachable", "--strict-equality"]
+        args: ["--config-file=pyproject.toml"]
         additional_dependencies: [types-psutil]
 
   # =============================================================================
