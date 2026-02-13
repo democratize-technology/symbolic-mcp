@@ -1670,7 +1670,10 @@ def get_capabilities() -> dict[str, object]:
             },
         ],
         "resources": [
-            {"uri": "config://security", "description": "Security configuration settings"},
+            {
+                "uri": "config://security",
+                "description": "Security configuration settings",
+            },
             {"uri": "config://server", "description": "Server configuration settings"},
             {"uri": "info://capabilities", "description": "Server capabilities"},
         ],

@@ -16,9 +16,9 @@ if __name__ == "__main__":
     import sys
 
     sys.path.insert(0, "/Users/eringreen/Development/symbolic-mcp")
-    from main import mcp, _get_github_auth
+    from main import _get_github_auth, mcp
 else:
-    from main import mcp, _get_github_auth
+    from main import _get_github_auth, mcp
 
 
 class TestOAuthConfiguration:
@@ -33,9 +33,7 @@ class TestOAuthConfiguration:
         result = _get_github_auth()
         assert result is None, "Should return None when env vars not set"
 
-    def test_get_github_auth_returns_provider_with_env_vars(
-        self, monkeypatch
-    ) -> None:
+    def test_get_github_auth_returns_provider_with_env_vars(self, monkeypatch) -> None:
         """Verify that _get_github_auth returns GitHubProvider when env vars set."""
         # Set env vars
         monkeypatch.setenv("GITHUB_CLIENT_ID", "test_client_id")
@@ -47,9 +45,7 @@ class TestOAuthConfiguration:
         # Verify it's a GitHubProvider
         from fastmcp.server.auth.providers.github import GitHubProvider
 
-        assert isinstance(
-            result, GitHubProvider
-        ), "Should be GitHubProvider instance"
+        assert isinstance(result, GitHubProvider), "Should be GitHubProvider instance"
 
     def test_get_github_auth_returns_none_with_only_client_id(
         self, monkeypatch
@@ -61,9 +57,7 @@ class TestOAuthConfiguration:
         result = _get_github_auth()
         assert result is None, "Should return None when only client_id set"
 
-    def test_get_github_auth_returns_none_with_only_secret(
-        self, monkeypatch
-    ) -> None:
+    def test_get_github_auth_returns_none_with_only_secret(self, monkeypatch) -> None:
         """Verify that _get_github_auth returns None when only secret set."""
         monkeypatch.delenv("GITHUB_CLIENT_ID", raising=False)
         monkeypatch.setenv("GITHUB_CLIENT_SECRET", "test_secret")
