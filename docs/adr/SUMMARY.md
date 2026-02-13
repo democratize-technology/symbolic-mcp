@@ -1,8 +1,8 @@
 # ADR Implementation Summary
 
-**Date**: 2026-02-09
+**Date**: 2026-02-13
 **NASA-Style Documentation**: Complete
-**Total ADRs Created**: 10
+**Total ADRs Created**: 11
 
 ---
 
@@ -101,6 +101,11 @@ docs/adr/
 - **Key Rationale**: Flexibility, performance, simplicity
 - **Score**: 8.9/10 (weighted criteria)
 
+### ADR-011: Authentication & Authorization
+   - **Decision**: GitHub OAuth 2.1 for HTTP deployment
+   - **Key Rationale**: Transport-layer security, zero code changes for stdio
+   - **Status**: Accepted (2025-02-13)
+
 ---
 
 ## NASA Documentation Principles Applied
@@ -144,6 +149,7 @@ Each ADR includes:
 | 008 | REQ-801 through REQ-805 | All Compliant |
 | 009 | REQ-901 through REQ-905 | All Compliant |
 | 010 | REQ-1001 through REQ-1005 | All Compliant |
+| 011 | REQ-AUTH-001 through REQ-AUTH-005 | All Compliant |
 
 ---
 
