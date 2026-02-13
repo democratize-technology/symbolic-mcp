@@ -32,6 +32,7 @@ from crosshair.core_and_libs import (
 )
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.github import GitHubProvider
+from mcp.types import ToolAnnotations
 from typing_extensions import TypedDict
 
 # Version information
@@ -1506,7 +1507,14 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool()  # type: ignore[misc]
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Symbolic Contract Verification",
+        readOnlyHint=True,  # Analysis doesn't modify code
+        idempotentHint=True,  # Same code produces same results
+        destructiveHint=False,
+    )
+)  # type: ignore[misc]
 def symbolic_check(
     code: str,
     function_name: str,
@@ -1525,7 +1533,14 @@ def symbolic_check(
     return logic_symbolic_check(code, function_name, timeout_seconds)
 
 
-@mcp.tool()  # type: ignore[misc]
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Find Exception Triggering Inputs",
+        readOnlyHint=True,  # Analysis doesn't modify code
+        idempotentHint=True,  # Same inputs produce same results
+        destructiveHint=False,
+    )
+)  # type: ignore[misc]
 def find_path_to_exception(
     code: str,
     function_name: str,
@@ -1538,7 +1553,14 @@ def find_path_to_exception(
     )
 
 
-@mcp.tool()  # type: ignore[misc]
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Semantic Function Equivalence Check",
+        readOnlyHint=True,  # Analysis doesn't modify code
+        idempotentHint=True,  # Same inputs produce same results
+        destructiveHint=False,
+    )
+)  # type: ignore[misc]
 def compare_functions(
     code: str, function_a: str, function_b: str, timeout_seconds: int = 60
 ) -> _FunctionComparisonResult:
@@ -1546,7 +1568,14 @@ def compare_functions(
     return logic_compare_functions(code, function_a, function_b, timeout_seconds)
 
 
-@mcp.tool()  # type: ignore[misc]
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Branch Analysis and Complexity",
+        readOnlyHint=True,  # Analysis doesn't modify code
+        idempotentHint=True,  # Same inputs produce same results
+        destructiveHint=False,
+    )
+)  # type: ignore[misc]
 def analyze_branches(
     code: str,
     function_name: str,
@@ -1569,7 +1598,14 @@ def analyze_branches(
     )
 
 
-@mcp.tool()  # type: ignore[misc]
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Server Health Check",
+        readOnlyHint=True,  # Read-only server status
+        idempotentHint=True,  # Same results on repeated calls
+        destructiveHint=False,
+    )
+)  # type: ignore[misc]
 def health_check() -> _HealthCheckResult:
     """Health check for the Symbolic Execution MCP server.
 
