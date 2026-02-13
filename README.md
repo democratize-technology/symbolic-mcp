@@ -193,6 +193,53 @@ def find_max_fast(lst: List[int]) -> int:
 result = compare_functions(code, "find_max_slow", "find_max_fast")
 ```
 
+### Resource Templates
+
+FastMCP supports RFC 6570 URI templates for dynamic resources:
+
+```python
+# Static resource (no parameters)
+@mcp.resource("config://security")
+def get_security_config() -> dict:
+    return {"allowed_modules": ["math", "random"]}
+
+# Path parameter: matches "file://code/foo.py"
+@mcp.resource("file://code/{function_name}.py")
+def get_function_code(function_name: str) -> str:
+    return f"# {function_name} implementation"
+
+# Wildcard path: matches "file://code/utils/helpers.py"
+@mcp.resource("file://code/{filepath*}.py")
+def get_nested_code(filepath: str) -> str:
+    return f"# {filepath} implementation"
+
+# Query parameters: "file://code/foo.py?format=raw&limit=100"
+@mcp.resource("file://code/{filename}.py{?format,limit}")
+def get_code_with_options(
+    filename: str, format: str | None = None, limit: int | None = None
+) -> str:
+    return fetch_code(filename, format=format, max_lines=limit)
+```
+
+### Lifecycle Events
+
+FastMCP servers support lifecycle management for startup/shutdown:
+
+```python
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan():
+    # Startup: Initialize resources
+    print("Symbolic Execution Server starting...")
+    yield
+    # Shutdown: Clean up resources
+    print("Symbolic Execution Server shutting down...")
+
+# Create server with lifespan
+mcp = FastMCP("Symbolic Execution Server", lifespan=lifespan)
+```
+
 ## 🔧 Development Setup
 
 ### Prerequisites
