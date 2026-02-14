@@ -82,11 +82,11 @@ repos:
   # TYPE CHECKING
   # =============================================================================
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         args: ["--config-file=pyproject.toml"]
-        additional_dependencies: [types-psutil]
+        additional_dependencies: [types-psutil, fastmcp, mcp]
 
   # =============================================================================
   # DOCUMENTATION

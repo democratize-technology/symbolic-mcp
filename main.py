@@ -37,7 +37,7 @@ from typing_extensions import TypedDict
 
 # Version information
 try:
-    from ._version import __version__
+    from ._version import __version__  # type: ignore[import-not-found]
 except ImportError:
     __version__ = "0.1.0"
 
@@ -1529,7 +1529,7 @@ mcp = FastMCP(
         idempotentHint=True,  # Same code produces same results
         destructiveHint=False,
     )
-)  # type: ignore[misc]
+)
 def symbolic_check(
     code: str,
     function_name: str,
@@ -1555,7 +1555,7 @@ def symbolic_check(
         idempotentHint=True,  # Same inputs produce same results
         destructiveHint=False,
     )
-)  # type: ignore[misc]
+)
 def find_path_to_exception(
     code: str,
     function_name: str,
@@ -1575,7 +1575,7 @@ def find_path_to_exception(
         idempotentHint=True,  # Same inputs produce same results
         destructiveHint=False,
     )
-)  # type: ignore[misc]
+)
 def compare_functions(
     code: str, function_a: str, function_b: str, timeout_seconds: int = 60
 ) -> _FunctionComparisonResult:
@@ -1590,7 +1590,7 @@ def compare_functions(
         idempotentHint=True,  # Same inputs produce same results
         destructiveHint=False,
     )
-)  # type: ignore[misc]
+)
 def analyze_branches(
     code: str,
     function_name: str,
@@ -1620,7 +1620,7 @@ def analyze_branches(
         idempotentHint=True,  # Same results on repeated calls
         destructiveHint=False,
     )
-)  # type: ignore[misc]
+)
 def health_check() -> _HealthCheckResult:
     """Health check for the Symbolic Execution MCP server.
 
@@ -1660,7 +1660,7 @@ def health_check() -> _HealthCheckResult:
 
 
 @mcp.resource("config://security")
-def get_security_config() -> dict[str, object]:  # type: ignore[misc]
+def get_security_config() -> dict[str, object]:
     """Current security configuration settings.
 
     Returns the whitelist of allowed modules, blocked modules, and
@@ -1677,7 +1677,7 @@ def get_security_config() -> dict[str, object]:  # type: ignore[misc]
 
 
 @mcp.resource("config://server")
-def get_server_config() -> dict[str, object]:  # type: ignore[misc]
+def get_server_config() -> dict[str, object]:
     """Current server configuration settings.
 
     Returns version, timeout settings, and other server-related
@@ -1692,7 +1692,7 @@ def get_server_config() -> dict[str, object]:  # type: ignore[misc]
 
 
 @mcp.resource("info://capabilities")
-def get_capabilities() -> dict[str, object]:  # type: ignore[misc]
+def get_capabilities() -> dict[str, object]:
     """Server capabilities and available tools.
 
     Returns a list of available tools and their descriptions.
@@ -1732,7 +1732,7 @@ def get_capabilities() -> dict[str, object]:  # type: ignore[misc]
 
 
 @mcp.prompt
-def symbolic_check_template() -> str:  # type: ignore[misc]
+def symbolic_check_template() -> str:
     """Template for analyzing function contracts with symbolic execution.
 
     Use this prompt when you want to verify that a function satisfies
@@ -1758,7 +1758,7 @@ Use the `symbolic_check` tool with appropriate timeout.
 
 
 @mcp.prompt
-def find_exception_path_template() -> str:  # type: ignore[misc]
+def find_exception_path_template() -> str:
     """Template for finding paths to exceptions.
 
     Use this prompt when you want to find concrete inputs that cause
@@ -1784,7 +1784,7 @@ Use the `find_path_to_exception` tool with appropriate timeout.
 
 
 @mcp.prompt
-def compare_functions_template() -> str:  # type: ignore[misc]
+def compare_functions_template() -> str:
     """Template for comparing function equivalence.
 
     Use this prompt when you want to check if two functions are
@@ -1810,7 +1810,7 @@ Use the `compare_functions` tool with appropriate timeout.
 
 
 @mcp.prompt
-def analyze_branches_template() -> str:  # type: ignore[misc]
+def analyze_branches_template() -> str:
     """Template for branch analysis.
 
     Use this prompt when you want to analyze branch conditions
