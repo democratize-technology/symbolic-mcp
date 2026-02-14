@@ -44,8 +44,7 @@ repos:
     rev: 1.7.10
     hooks:
       - id: bandit
-        args: ["-r", ".", "-ll"]
-        pass_filenames: false
+        args: ["--skip", "B101,B601,B602,B603,B401,B404", "--exclude", "tests/,build/,dist/,docs/,.git/,__pycache__/,.pytest_cache/,.tox/,.venv/", "-ll"]
 
   # Note: detect-secrets requires local installation and baseline setup
   # Enable when detect-secrets is installed: pip install detect-secrets

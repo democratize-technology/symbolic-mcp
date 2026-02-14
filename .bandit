@@ -5,15 +5,7 @@
 
 [bandit]
 # Exclude directories from security scanning
-exclude =
-    tests/
-    build/
-    dist/
-    docs/
-    .git/
-    __pycache__/
-    .pytest_cache/
-    .tox/
+exclude = tests/,build/,dist/,docs/,.git/,__pycache__/,.pytest_cache/,.tox/,.venv/
 
 # Tests to skip (legitimate usage for symbolic execution)
 # B101: assert_used (we use assertions in tests and defensive programming)
