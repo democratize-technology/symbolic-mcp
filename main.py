@@ -1109,6 +1109,42 @@ def _extract_function_signature_and_params(
     return sig_str, param_names
 
 
+def _generate_wrapper_code(
+    code: str,
+    wrapper_name: str,
+    postcondition: str,
+    target_func: str,
+    func_sig: str,
+    param_names: list[str],
+) -> str:
+    """Generate wrapper code for CrossHair symbolic analysis.
+
+    Args:
+        code: The original function code to embed
+        wrapper_name: Name for the wrapper function
+        postcondition: CrossHair postcondition string (e.g., "True" or "f(_) == g(_)")
+        target_func: Name of the function to call in the wrapper
+        func_sig: Function signature string (e.g., "(x: int, y: int)")
+        param_names: List of parameter names for the function call
+
+    Returns:
+        Complete wrapper code ready for symbolic analysis
+    """
+    if param_names:
+        args_str = ", ".join(param_names)
+        call_expr = f"{target_func}({args_str})"
+    else:
+        call_expr = f"{target_func}(*args, **kwargs)"
+
+    return f"""
+{code}
+
+def {wrapper_name}{func_sig}:
+    '''post: {postcondition}'''
+    return {call_expr}
+"""
+
+
 def logic_find_path_to_exception(
     code: str, function_name: str, exception_type: str, timeout_seconds: int
 ) -> _ExceptionPathResult:
@@ -1141,26 +1177,15 @@ def logic_find_path_to_exception(
                 func_sig = "(*args, **kwargs)"
                 param_names = []
 
-            # Create wrapper with explicit signature
-            # We use a simple postcondition so CrossHair analyzes the function
-            if param_names:
-                args_str = ", ".join(param_names)
-                wrapper_code = f"""
-{code}
-
-def _exception_hunter_wrapper{func_sig}:
-    '''post: True'''
-    return {function_name}({args_str})
-"""
-            else:
-                # Fallback for functions with no parameters or *args/**kwargs
-                wrapper_code = f"""
-{code}
-
-def _exception_hunter_wrapper{func_sig}:
-    '''post: True'''
-    return {function_name}(*args, **kwargs)
-"""
+            # Create wrapper with explicit signature for CrossHair analysis
+            wrapper_code = _generate_wrapper_code(
+                code=code,
+                wrapper_name="_exception_hunter_wrapper",
+                postcondition="True",
+                target_func=function_name,
+                func_sig=func_sig,
+                param_names=param_names,
+            )
 
             analyzer = SymbolicAnalyzer(timeout_seconds)
             result = analyzer.analyze(wrapper_code, "_exception_hunter_wrapper")
@@ -1256,24 +1281,14 @@ def logic_compare_functions(
                 param_names = []
 
             # Create wrapper with explicit signature using postcondition
-            if param_names:
-                args_str = ", ".join(param_names)
-                wrapper_code = f"""
-{code}
-
-def _equivalence_check{func_sig}:
-    '''post: {function_a}(_) == {function_b}(_)'''
-    return {function_a}({args_str})
-"""
-            else:
-                # Fallback for functions with no parameters or *args/**kwargs
-                wrapper_code = f"""
-{code}
-
-def _equivalence_check{func_sig}:
-    '''post: {function_a}(_) == {function_b}(_)'''
-    return {function_a}(*args, **kwargs)
-"""
+            wrapper_code = _generate_wrapper_code(
+                code=code,
+                wrapper_name="_equivalence_check",
+                postcondition=f"{function_a}(_) == {function_b}(_)",
+                target_func=function_a,
+                func_sig=func_sig,
+                param_names=param_names,
+            )
 
             analyzer = SymbolicAnalyzer(timeout_seconds)
             result = analyzer.analyze(wrapper_code, "_equivalence_check")
@@ -1645,7 +1660,7 @@ def health_check() -> _HealthCheckResult:
 
 
 @mcp.resource("config://security")
-def get_security_config() -> dict[str, object]:
+def get_security_config() -> dict[str, object]:  # type: ignore[misc]
     """Current security configuration settings.
 
     Returns the whitelist of allowed modules, blocked modules, and
@@ -1662,7 +1677,7 @@ def get_security_config() -> dict[str, object]:
 
 
 @mcp.resource("config://server")
-def get_server_config() -> dict[str, object]:
+def get_server_config() -> dict[str, object]:  # type: ignore[misc]
     """Current server configuration settings.
 
     Returns version, timeout settings, and other server-related
@@ -1677,7 +1692,7 @@ def get_server_config() -> dict[str, object]:
 
 
 @mcp.resource("info://capabilities")
-def get_capabilities() -> dict[str, object]:
+def get_capabilities() -> dict[str, object]:  # type: ignore[misc]
     """Server capabilities and available tools.
 
     Returns a list of available tools and their descriptions.
@@ -1717,7 +1732,7 @@ def get_capabilities() -> dict[str, object]:
 
 
 @mcp.prompt
-def symbolic_check_template() -> str:
+def symbolic_check_template() -> str:  # type: ignore[misc]
     """Template for analyzing function contracts with symbolic execution.
 
     Use this prompt when you want to verify that a function satisfies
@@ -1743,7 +1758,7 @@ Use the `symbolic_check` tool with appropriate timeout.
 
 
 @mcp.prompt
-def find_exception_path_template() -> str:
+def find_exception_path_template() -> str:  # type: ignore[misc]
     """Template for finding paths to exceptions.
 
     Use this prompt when you want to find concrete inputs that cause
@@ -1769,7 +1784,7 @@ Use the `find_path_to_exception` tool with appropriate timeout.
 
 
 @mcp.prompt
-def compare_functions_template() -> str:
+def compare_functions_template() -> str:  # type: ignore[misc]
     """Template for comparing function equivalence.
 
     Use this prompt when you want to check if two functions are
@@ -1795,7 +1810,7 @@ Use the `compare_functions` tool with appropriate timeout.
 
 
 @mcp.prompt
-def analyze_branches_template() -> str:
+def analyze_branches_template() -> str:  # type: ignore[misc]
     """Template for branch analysis.
 
     Use this prompt when you want to analyze branch conditions
