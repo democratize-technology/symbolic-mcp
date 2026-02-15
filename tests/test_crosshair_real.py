@@ -37,13 +37,7 @@ These tests focus on core validation scenarios that should work with real
 CrossHair integration.
 """
 
-import os
-import sys
-
 import pytest
-
-# Add the project root to Python path for imports
-sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 # Import the actual logic functions with real CrossHair
 # These imports will FAIL if CrossHair is not properly installed

@@ -32,13 +32,7 @@ According to Section 5.3, these tests must demonstrate that symbolic
 execution can verify that two implementations are equivalent or find differences.
 """
 
-import os
-import sys
-
 import pytest
-
-# Add the project root to Python path for imports
-sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 # Import the actual logic functions, not decorated tools
 from main import logic_compare_functions as compare_functions

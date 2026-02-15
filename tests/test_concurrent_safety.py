@@ -139,6 +139,7 @@ def multiply(x: int, y: int) -> int:
         the locking mechanism itself.
         """
         lock_contention_count = [0]
+        successful_acquisitions = [0]
         num_threads = 10
 
         def contend_for_lock(thread_id: int) -> None:
@@ -146,6 +147,7 @@ def multiply(x: int, y: int) -> int:
             acquired = main._SYS_MODULES_LOCK.acquire(blocking=False)
             if acquired:
                 try:
+                    successful_acquisitions[0] += 1
                     # Hold the lock briefly
                     time.sleep(0.01)
                 finally:
@@ -164,9 +166,13 @@ def multiply(x: int, y: int) -> int:
         for t in threads:
             t.join()
 
-        # With this many threads and short sleep, we should see some contention
-        # (though this is inherently non-deterministic, so we just verify it ran)
-        assert len(threads) == num_threads
+        # Verify lock mechanism works:
+        # - At least one thread should have acquired the lock
+        # - Total operations should equal num_threads
+        assert (
+            successful_acquisitions[0] >= 1
+        ), "At least one thread should acquire the lock"
+        assert successful_acquisitions[0] + lock_contention_count[0] == num_threads
 
     def test_no_module_leak_after_concurrent_use(self):
         """Verify that temporary modules are cleaned up after concurrent use.
@@ -283,6 +289,11 @@ def add_one_v2(x: int) -> int:
                 # Capture other exceptions for debugging
                 other_exceptions.append(e)
 
+        # Execute concurrent comparisons
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [executor.submit(run_comparison, i) for i in range(num_threads)]
+            concurrent.futures.wait(futures)
+
         # No KeyError should occur (would indicate race condition)
         assert len(keyerrors) == 0, f"Race condition detected: {keyerrors}"
 
@@ -346,7 +357,3 @@ class TestSysModulesLockAttributes:
         # Should be able to acquire again
         assert main._SYS_MODULES_LOCK.acquire(blocking=False)
         main._SYS_MODULES_LOCK.release()
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

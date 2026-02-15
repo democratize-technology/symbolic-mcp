@@ -10,15 +10,7 @@ import os
 import pytest
 from fastmcp import FastMCP
 
-# Import main module to access the configured mcp instance
-if __name__ == "__main__":
-    # When run as a script, add parent directory to path
-    import sys
-
-    sys.path.insert(0, "/Users/eringreen/Development/symbolic-mcp")
-    from main import _get_github_auth, mcp
-else:
-    from main import _get_github_auth, mcp
+from main import _get_github_auth, mcp
 
 
 class TestOAuthConfiguration:
@@ -102,8 +94,3 @@ class TestOAuthConfiguration:
         )
         assert test_server is not None
         assert test_server.name == "Test Server"
-
-
-if __name__ == "__main__":
-    # Run tests when executed directly
-    pytest.main([__file__, "-v"])

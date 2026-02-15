@@ -154,8 +154,3 @@ class TestErrorMaskingBehavior:
 
         # Default should be False (documenting this unsafe default)
         assert test_server._tool_manager.mask_error_details is False
-
-
-if __name__ == "__main__":
-    # Run tests when executed directly
-    pytest.main([__file__, "-v"])

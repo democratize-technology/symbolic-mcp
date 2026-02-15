@@ -40,13 +40,7 @@ the code explicitly counts elif branches, but ast.walk() also visits those
 same elif nodes as separate If nodes, causing double-counting.
 """
 
-import os
-import sys
-
 import pytest
-
-# Add the project root to Python path for imports
-sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 from main import logic_analyze_branches as analyze_branches
 

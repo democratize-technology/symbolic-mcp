@@ -8,13 +8,35 @@ with delete=False but before the try block is entered, the file may not
 be cleaned up.
 """
 
+import importlib.util
 import os
 import tempfile
+from contextlib import contextmanager
+from typing import Generator, List
 from unittest.mock import patch
 
 import pytest
 
 from main import SymbolicAnalyzer, logic_compare_functions, logic_find_path_to_exception
+
+
+@contextmanager
+def track_temp_files() -> Generator[List[str], None, None]:
+    """Context manager to track temporary files created during a test.
+
+    Patches tempfile.NamedTemporaryFile to track all created files.
+    Yields a list that will be populated with the paths of created temp files.
+    """
+    created: List[str] = []
+    original = tempfile.NamedTemporaryFile
+
+    def tracker(*args, **kwargs):
+        result = original(*args, **kwargs)
+        created.append(result.name)
+        return result
+
+    with patch("tempfile.NamedTemporaryFile", tracker):
+        yield created
 
 
 class TestTemporaryFileCleanup:
@@ -30,17 +52,7 @@ def simple_function(x: int) -> int:
     return x + 1
 """
 
-        # Track created temp files
-        temp_files_created = []
-        original_named_temporary_file = tempfile.NamedTemporaryFile
-
-        def tracking_named_temporary_file(*args, **kwargs):
-            """Track temp file creation."""
-            result = original_named_temporary_file(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
-
-        with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
+        with track_temp_files() as temp_files_created:
             result = analyzer.analyze(code, "simple_function")
 
         # Verify analysis succeeded (valid status values per spec)
@@ -63,17 +75,7 @@ def broken_function():
     this_is_not_a_valid_identifier_!!!
 """
 
-        # Track created temp files
-        temp_files_created = []
-        original_named_temporary_file = tempfile.NamedTemporaryFile
-
-        def tracking_named_temporary_file(*args, **kwargs):
-            """Track temp file creation."""
-            result = original_named_temporary_file(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
-
-        with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
+        with track_temp_files() as temp_files_created:
             result = analyzer.analyze(code, "broken_function")
 
         # Verify analysis returned an error
@@ -93,17 +95,7 @@ def test_func(x: int) -> int:
     return x
 """
 
-        # Track created temp files
-        temp_files_created = []
-        original_named_temporary_file = tempfile.NamedTemporaryFile
-
-        def tracking_named_temporary_file(*args, **kwargs):
-            """Track temp file creation."""
-            result = original_named_temporary_file(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
-
-        with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
+        with track_temp_files() as temp_files_created:
             result = logic_find_path_to_exception(code, "test_func", "ValueError", 30)
 
         # Verify function completed
@@ -124,17 +116,7 @@ def test_func():
     eval("print('dangerous')")
 """
 
-        # Track created temp files
-        temp_files_created = []
-        original_named_temporary_file = tempfile.NamedTemporaryFile
-
-        def tracking_named_temporary_file(*args, **kwargs):
-            """Track temp file creation."""
-            result = original_named_temporary_file(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
-
-        with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
+        with track_temp_files() as temp_files_created:
             result = logic_find_path_to_exception(code, "test_func", "ValueError", 30)
 
         # Verify validation failed
@@ -158,17 +140,7 @@ def func_b(x: int) -> int:
     return x
 """
 
-        # Track created temp files
-        temp_files_created = []
-        original_named_temporary_file = tempfile.NamedTemporaryFile
-
-        def tracking_named_temporary_file(*args, **kwargs):
-            """Track temp file creation."""
-            result = original_named_temporary_file(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
-
-        with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
+        with track_temp_files() as temp_files_created:
             result = logic_compare_functions(code, "func_a", "func_b", 30)
 
         # Verify function completed
@@ -192,17 +164,7 @@ def func_b():
     return 1
 """
 
-        # Track created temp files
-        temp_files_created = []
-        original_named_temporary_file = tempfile.NamedTemporaryFile
-
-        def tracking_named_temporary_file(*args, **kwargs):
-            """Track temp file creation."""
-            result = original_named_temporary_file(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
-
-        with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
+        with track_temp_files() as temp_files_created:
             result = logic_compare_functions(code, "func_a", "func_b", 30)
 
         # Verify validation failed
@@ -222,24 +184,12 @@ def func_b():
         This simulates the scenario where an exception could occur between
         tempfile creation and entering the try block (e.g., in spec_from_file_location).
         """
-        import importlib.util
-
         analyzer = SymbolicAnalyzer()
 
         code = """
 def simple_function(x: int) -> int:
     return x + 1
 """
-
-        # Track created temp files
-        temp_files_created = []
-        original_named_temporary_file = tempfile.NamedTemporaryFile
-
-        def tracking_named_temporary_file(*args, **kwargs):
-            """Track temp file creation."""
-            result = original_named_temporary_file(*args, **kwargs)
-            temp_files_created.append(result.name)
-            return result
 
         # Even if spec_from_file_location fails, cleanup should happen
         call_count = [0]
@@ -251,7 +201,7 @@ def simple_function(x: int) -> int:
                 raise RuntimeError("Simulated failure in spec_from_file_location")
             return importlib.util.spec_from_file_location(*args, **kwargs)
 
-        with patch("tempfile.NamedTemporaryFile", tracking_named_temporary_file):
+        with track_temp_files() as temp_files_created:
             with patch(
                 "importlib.util.spec_from_file_location",
                 failing_spec_from_file_location,
