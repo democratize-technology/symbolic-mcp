@@ -146,6 +146,47 @@ class _HealthCheckResult(TypedDict):
     memory_usage_mb: float
 
 
+class _ToolDescription(TypedDict):
+    """Description of an MCP tool."""
+
+    name: str
+    description: str
+
+
+class _ResourceDescription(TypedDict):
+    """Description of an MCP resource."""
+
+    uri: str
+    description: str
+
+
+class _SecurityConfigResult(TypedDict):
+    """Result of security configuration resource."""
+
+    allowed_modules: list[str]
+    blocked_modules: list[str]
+    dangerous_builtins: list[str]
+    memory_limit_mb: int
+    code_size_bytes: int
+    coverage_threshold: int
+
+
+class _ServerConfigResult(TypedDict):
+    """Result of server configuration resource."""
+
+    version: str
+    default_timeout_seconds: int
+    mask_error_details: bool
+    transport: Literal["oauth", "stdio"]
+
+
+class _CapabilitiesResult(TypedDict):
+    """Result of capabilities resource."""
+
+    tools: list[_ToolDescription]
+    resources: list[_ResourceDescription]
+
+
 # --- Security: Import Whitelist ---
 
 # Modules allowed in user code for symbolic execution
@@ -1496,7 +1537,12 @@ def _get_github_auth() -> Optional[GitHubProvider]:
 
 @contextlib.asynccontextmanager
 async def lifespan(app: object) -> AsyncGenerator[dict[str, object], None]:
-    """Manage server lifespan."""
+    """Manage server lifespan.
+
+    Note: The app parameter type is 'object' to match FastMCP's expected
+    lifespan context manager signature. The return type uses dict[str, object]
+    as the state dictionary can contain arbitrary values.
+    """
     try:
         yield {}
     finally:
@@ -1662,7 +1708,7 @@ def health_check() -> _HealthCheckResult:
 
 
 @mcp.resource("config://security")
-def get_security_config() -> dict[str, object]:
+def get_security_config() -> _SecurityConfigResult:
     """Current security configuration settings.
 
     Returns the whitelist of allowed modules, blocked modules, and
@@ -1679,7 +1725,7 @@ def get_security_config() -> dict[str, object]:
 
 
 @mcp.resource("config://server")
-def get_server_config() -> dict[str, object]:
+def get_server_config() -> _ServerConfigResult:
     """Current server configuration settings.
 
     Returns version, timeout settings, and other server-related
@@ -1694,7 +1740,7 @@ def get_server_config() -> dict[str, object]:
 
 
 @mcp.resource("info://capabilities")
-def get_capabilities() -> dict[str, object]:
+def get_capabilities() -> _CapabilitiesResult:
     """Server capabilities and available tools.
 
     Returns a list of available tools and their descriptions.
