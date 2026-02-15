@@ -144,6 +144,9 @@ symbolic-mcp = "main:main"
 [tool.setuptools]
 py-modules = ["main"]
 
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["main*"]

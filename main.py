@@ -20,7 +20,7 @@ import threading
 import time
 import types
 import uuid
-from typing import AsyncGenerator, Generator, NotRequired, Optional
+from typing import AsyncGenerator, Generator, Literal, NotRequired, Optional
 
 from crosshair.core import AnalysisOptionSet
 from crosshair.core_and_libs import (
@@ -66,7 +66,7 @@ class _Counterexample(TypedDict):
 class _SymbolicCheckResult(TypedDict):
     """Result of symbolic execution analysis."""
 
-    status: str  # "verified" | "counterexample" | "timeout" | "error"
+    status: Literal["verified", "counterexample", "timeout", "error"]
     counterexamples: list[_Counterexample]
     paths_explored: int
     paths_verified: int
@@ -87,7 +87,7 @@ class _ValidationResult(TypedDict):
 class _ExceptionPathResult(TypedDict):
     """Result of finding a path to an exception."""
 
-    status: str  # "found" | "unreachable" | "error"
+    status: Literal["found", "unreachable", "error"]
     triggering_inputs: NotRequired[list[_Counterexample]]
     paths_to_exception: NotRequired[int]
     total_paths_explored: NotRequired[int]
@@ -99,7 +99,7 @@ class _ExceptionPathResult(TypedDict):
 class _FunctionComparisonResult(TypedDict):
     """Result of comparing two functions."""
 
-    status: str  # "equivalent" | "different" | "error"
+    status: Literal["equivalent", "different", "error"]
     distinguishing_input: NotRequired[Optional[_Counterexample]]
     paths_compared: NotRequired[int]
     confidence: NotRequired[str]
@@ -121,14 +121,14 @@ class _BranchInfo(TypedDict):
 class _BranchAnalysisResult(TypedDict):
     """Result of branch analysis."""
 
-    status: str  # "complete" | "error"
+    status: Literal["complete", "error"]
     branches: NotRequired[list[_BranchInfo]]
     total_branches: NotRequired[int]
     reachable_branches: NotRequired[int]
     dead_code_lines: NotRequired[list[int]]
     cyclomatic_complexity: NotRequired[int]
     time_seconds: NotRequired[float]
-    analysis_mode: NotRequired[str]  # "static" | "symbolic"
+    analysis_mode: NotRequired[Literal["static", "symbolic"]]
     error_type: NotRequired[str]
     message: NotRequired[str]
     line: NotRequired[int]
@@ -137,7 +137,7 @@ class _BranchAnalysisResult(TypedDict):
 class _HealthCheckResult(TypedDict):
     """Result of health check."""
 
-    status: str
+    status: Literal["healthy"]
     version: str
     python_version: str
     crosshair_version: Optional[str]
@@ -984,7 +984,9 @@ class SymbolicAnalyzer:
 
                 # Determine status based on analysis results
                 # Valid statuses per spec: "verified", "counterexample", "timeout", "error"
-                status = "verified"
+                status: Literal["verified", "counterexample", "timeout", "error"] = (
+                    "verified"
+                )
                 if counterexamples:
                     status = "counterexample"
                 # Note: paths_explored == 0 with no counterexamples means no contracts to verify
