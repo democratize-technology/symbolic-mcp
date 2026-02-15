@@ -1692,7 +1692,9 @@ def health_check() -> _HealthCheckResult:
     try:
         import z3
 
-        z3_version = getattr(z3, "get_version", lambda: "unknown")()
+        version_tuple = z3.get_version()
+        # z3.get_version() returns a tuple like (4, 13, 0, 0)
+        z3_version = ".".join(map(str, version_tuple)) if version_tuple else "unknown"
     except Exception:
         z3_version = None
 

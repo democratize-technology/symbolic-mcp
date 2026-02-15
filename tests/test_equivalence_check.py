@@ -71,7 +71,7 @@ def impl_b(x: int) -> int:
 """
 
         result = compare_functions(
-            code=code, function_a="impl_a", function_b="impl_b", timeout_seconds=30
+            code=code, function_a="impl_a", function_b="impl_b", timeout_seconds=10
         )
 
         # Expected result based on Section 5.3 specification
@@ -118,7 +118,7 @@ def sum_formula_b(n: int) -> int:
             code=code,
             function_a="sum_formula_a",
             function_b="sum_formula_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # These should be equivalent
@@ -156,7 +156,7 @@ def factorial_b(n: int) -> int:
             code=code,
             function_a="factorial_a",
             function_b="factorial_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # Should detect the difference at n=20
@@ -190,7 +190,7 @@ def safe_divide_b(x: int, y: int) -> int:
             code=code,
             function_a="safe_divide_a",
             function_b="safe_divide_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # Should detect the difference in error handling
@@ -217,7 +217,7 @@ def calculate_pi_b() -> float:
             code=code,
             function_a="calculate_pi_a",
             function_b="calculate_pi_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # These should be different (22/7 approximation vs actual pi)
@@ -246,7 +246,7 @@ def reverse_string_b(s: str) -> str:
             code=code,
             function_a="reverse_string_a",
             function_b="reverse_string_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # These should be equivalent
@@ -278,7 +278,7 @@ def array_max_b(arr: list) -> int:
             code=code,
             function_a="array_max_a",
             function_b="array_max_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # Should detect the difference for empty arrays
@@ -311,7 +311,7 @@ def fibonacci_b(n: int) -> int:
             code=code,
             function_a="fibonacci_a",
             function_b="fibonacci_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # These should be equivalent (though might be slow for large n)
@@ -337,7 +337,7 @@ def is_even_b(n: int) -> bool:
             code=code,
             function_a="is_even_a",
             function_b="is_even_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # Should detect the difference for negative even numbers
@@ -367,7 +367,7 @@ def to_string_b(x) -> str:
             code=code,
             function_a="to_string_a",
             function_b="to_string_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # Should detect differences for None and boolean values
@@ -403,7 +403,7 @@ def quadratic_solution_b(a: float, b: float, c: float) -> float:
             code=code,
             function_a="quadratic_solution_a",
             function_b="quadratic_solution_b",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         # These should be equivalent (within floating point precision)
@@ -429,7 +429,7 @@ def existing_function(x: int) -> int:
             code=code,
             function_a="existing_function",
             function_b="missing_function",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         assert (
@@ -453,7 +453,7 @@ def bad_function(y: int) -> int
             code=code,
             function_a="good_function",
             function_b="bad_function",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         assert (
@@ -478,7 +478,7 @@ def unsafe_function(x: int) -> int:
             code=code,
             function_a="safe_function",
             function_b="unsafe_function",
-            timeout_seconds=30,
+            timeout_seconds=10,
         )
 
         assert (

@@ -61,7 +61,7 @@ def simple_function(x: int) -> int:
     return x + 1
 """
         result = analyze_branches(
-            code=code, function_name="simple_function", timeout_seconds=30
+            code=code, function_name="simple_function", timeout_seconds=10
         )
 
         assert result["status"] == "complete"
@@ -78,7 +78,7 @@ def single_if(x: int) -> int:
     return 0
 """
         result = analyze_branches(
-            code=code, function_name="single_if", timeout_seconds=30
+            code=code, function_name="single_if", timeout_seconds=10
         )
 
         assert result["status"] == "complete"
@@ -120,7 +120,7 @@ def if_elif_chain(x: int) -> int:
         return 0
 """
         result = analyze_branches(
-            code=code, function_name="if_elif_chain", timeout_seconds=30
+            code=code, function_name="if_elif_chain", timeout_seconds=10
         )
 
         # Correct complexity: 1 (base) + 3 (if + 2 elifs) = 4
@@ -142,7 +142,7 @@ def nested_if(x: int, y: int) -> int:
     return 0
 """
         result = analyze_branches(
-            code=code, function_name="nested_if", timeout_seconds=30
+            code=code, function_name="nested_if", timeout_seconds=10
         )
 
         # Complexity = 1 (base) + 2 (two if statements) = 3
@@ -162,7 +162,7 @@ def while_loop(n: int) -> int:
     return total
 """
         result = analyze_branches(
-            code=code, function_name="while_loop", timeout_seconds=30
+            code=code, function_name="while_loop", timeout_seconds=10
         )
 
         # Complexity = 1 (base) + 1 (while) = 2
@@ -181,7 +181,7 @@ def for_loop(items: list) -> int:
     return total
 """
         result = analyze_branches(
-            code=code, function_name="for_loop", timeout_seconds=30
+            code=code, function_name="for_loop", timeout_seconds=10
         )
 
         # Complexity = 1 (base) + 1 (for) = 2
@@ -203,7 +203,7 @@ def boolop_and(x: int, y: int, z: int) -> bool:
     return False
 """
         result = analyze_branches(
-            code=code, function_name="boolop_and", timeout_seconds=30
+            code=code, function_name="boolop_and", timeout_seconds=10
         )
 
         # Complexity = 1 (base) + 1 (if) + 2 (BoolOp with 3 values has 2 additional operands) = 4
@@ -221,7 +221,7 @@ def boolop_or(x: int, y: int) -> bool:
     return False
 """
         result = analyze_branches(
-            code=code, function_name="boolop_or", timeout_seconds=30
+            code=code, function_name="boolop_or", timeout_seconds=10
         )
 
         # Complexity = 1 (base) + 1 (if) + 1 (BoolOp with 2 values has 1 additional operand) = 3
@@ -251,7 +251,7 @@ def complex_function(items: list, x: int) -> int:
     return total
 """
         result = analyze_branches(
-            code=code, function_name="complex_function", timeout_seconds=30
+            code=code, function_name="complex_function", timeout_seconds=10
         )
 
         # Decision points:
@@ -278,7 +278,7 @@ def if_elif_no_else(x: int) -> int:
     return 0
 """
         result = analyze_branches(
-            code=code, function_name="if_elif_no_else", timeout_seconds=30
+            code=code, function_name="if_elif_no_else", timeout_seconds=10
         )
 
         # Complexity = 1 (base) + 2 (if + 1 elif) = 3
@@ -297,7 +297,7 @@ def multiple_boolops(x: int, y: int, z: int) -> bool:
     return False
 """
         result = analyze_branches(
-            code=code, function_name="multiple_boolops", timeout_seconds=30
+            code=code, function_name="multiple_boolops", timeout_seconds=10
         )
 
         # Decision points:
@@ -320,7 +320,7 @@ def if_else(x: int) -> int:
         return 0
 """
         result = analyze_branches(
-            code=code, function_name="if_else", timeout_seconds=30
+            code=code, function_name="if_else", timeout_seconds=10
         )
 
         # Complexity = 1 (base) + 1 (if) = 2 (else doesn't add complexity)

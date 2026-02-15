@@ -26,35 +26,10 @@ These tests verify that validate_code handles edge cases in import statements
 without crashing. The main issue is that node.names[0] could raise IndexError
 and node.module could be None for relative imports.
 
-See: https://github.com/your-repo/issues/8
+NOTE: These tests do NOT require CrossHair mocking. The validate_code function
+and BLOCKED_MODULES constant have no CrossHair dependencies.
 """
 
-import ast
-import sys
-from unittest.mock import MagicMock
-
-import pytest
-
-# Mock crosshair modules before importing from main
-sys_modules_mock = MagicMock()
-sys_modules_mock.AnalysisOptions = MagicMock
-sys_modules_mock.AnalysisOptionSet = MagicMock
-sys_modules_mock.MessageType = MagicMock
-sys_modules_mock.MessageType.CONFIRMED = "confirmed"
-sys_modules_mock.MessageType.COUNTEREXAMPLE = "counterexample"
-sys_modules_mock.analyze_function = lambda *args, **kwargs: []
-sys_modules_mock.AnalysisResult = MagicMock
-
-sys.modules["crosshair"] = MagicMock()
-sys.modules["crosshair.core"] = sys_modules_mock
-sys.modules["crosshair.core_and_libs"] = sys_modules_mock
-sys.modules["crosshair.options"] = MagicMock()
-sys.modules["crosshair.states"] = MagicMock()
-sys.modules["crosshair.tracers"] = MagicMock()
-sys.modules["crosshair.util"] = MagicMock()
-
-# Now we can import from main without CrossHair dependency
-# noqa: E402 - Import after mocking crosshair modules
 from main import validate_code
 
 
@@ -132,65 +107,6 @@ class TestMalformedImportStatements:
         code = "from math \\\n    import sqrt\ndef bar(): return sqrt(4)"
         result = validate_code(code)
         assert result["valid"] is True
-
-
-class TestASTStructureEdgeCases:
-    """Tests that verify AST structure handling for unusual but valid Python."""
-
-    def test_ast_handles_empty_names_list_theoretical(self):
-        """Theoretical: what happens if names list is empty.
-
-        In practice, Python's parser doesn't create Import/ImportFrom nodes
-        with empty names lists for valid Python syntax. But we verify
-        our code handles this gracefully if it were to occur.
-        """
-        # We can't create this with actual Python code, so we construct the AST directly
-        # to test the validation logic
-        import ast
-
-        from main import BLOCKED_MODULES
-
-        # Simulate walking an AST with an Import node that has empty names
-        # This would be the edge case that could cause IndexError
-        # Create an Import node with empty names list (not possible in valid Python)
-        import_node = ast.Import(names=[])
-
-        # Manually check what our validation would do
-        # The original code would do: module_name = node.names[0].name
-        # This would raise IndexError
-
-        # Our fixed code should handle this:
-        if import_node.names:  # Check list is not empty
-            module_name = import_node.names[0].name
-            if module_name:
-                base_module = module_name.split(".")[0]
-                assert base_module not in BLOCKED_MODULES
-        else:
-            # Should gracefully skip the node
-            pass
-
-    def test_importfrom_with_none_module(self):
-        """Test ImportFrom where node.module is None (relative imports).
-
-        For relative imports like 'from . import foo', the module attribute
-        is None because there's no absolute module name.
-        """
-        import ast
-
-        # Create an ImportFrom node with module=None (as in relative imports)
-        import_from_node = ast.ImportFrom(
-            module=None, names=[ast.alias(name="foo", asname=None)], level=1
-        )
-
-        # Our fixed code should handle None module
-        if isinstance(import_from_node, ast.ImportFrom):
-            module_name = import_from_node.module  # This could be None
-            if module_name:  # Must check for None before processing
-                base_module = module_name.split(".")[0]
-            else:
-                # For relative imports with None module, skip or handle differently
-                # The key is not to crash
-                pass
 
 
 class TestBlockedModulesWithEdgeCases:

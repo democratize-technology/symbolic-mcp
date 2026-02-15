@@ -31,32 +31,11 @@ Consolidated from 39 tests to 7 essential tests that cover:
 6. Valid code acceptance
 7. Malformed code rejection
 
-These tests use mocks for CrossHair dependencies to avoid requiring the full
-symbolic execution library for validation testing.
+NOTE: These tests do NOT require CrossHair mocking. The validate_code function
+and the ALLOWED_MODULES/BLOCKED_MODULES constants have no CrossHair dependencies.
 """
 
-import sys
-from unittest.mock import MagicMock
-
 import pytest
-
-# Mock crosshair modules before importing from main
-sys_modules_mock = MagicMock()
-sys_modules_mock.AnalysisOptions = MagicMock
-sys_modules_mock.AnalysisOptionSet = MagicMock
-sys_modules_mock.MessageType = MagicMock
-sys_modules_mock.MessageType.CONFIRMED = "confirmed"
-sys_modules_mock.MessageType.COUNTEREXAMPLE = "counterexample"
-sys_modules_mock.analyze_function = lambda *args, **kwargs: []
-sys_modules_mock.AnalysisResult = MagicMock
-
-sys.modules["crosshair"] = MagicMock()
-sys.modules["crosshair.core"] = sys_modules_mock
-sys.modules["crosshair.core_and_libs"] = sys_modules_mock
-sys.modules["crosshair.options"] = MagicMock()
-sys.modules["crosshair.states"] = MagicMock()
-sys.modules["crosshair.tracers"] = MagicMock()
-sys.modules["crosshair.util"] = MagicMock()
 
 from main import ALLOWED_MODULES, BLOCKED_MODULES, validate_code
 

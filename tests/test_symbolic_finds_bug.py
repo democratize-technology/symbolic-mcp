@@ -75,7 +75,7 @@ def tricky(x: int, y: int) -> int:
 '''
 
         # This test MUST use real CrossHair execution, not mocks
-        result = symbolic_check(code=code, function_name="tricky", timeout_seconds=30)
+        result = symbolic_check(code=code, function_name="tricky", timeout_seconds=10)
 
         # Expected result based on Section 5.3 specification
         assert (
@@ -131,7 +131,7 @@ def string_length_check(s: str, threshold: int) -> int:
 '''
 
         result = symbolic_check(
-            code=code, function_name="string_length_check", timeout_seconds=30
+            code=code, function_name="string_length_check", timeout_seconds=10
         )
 
         # Should find the case where threshold > len(s) causing negative return
@@ -155,7 +155,7 @@ def precise_division(numerator: float, denominator: float) -> float:
 '''
 
         result = symbolic_check(
-            code=code, function_name="precise_division", timeout_seconds=30
+            code=code, function_name="precise_division", timeout_seconds=10
         )
 
         assert (
@@ -203,7 +203,7 @@ def clamp_value(value: int, min_val: int, max_val: int) -> int:
 '''
 
         result = symbolic_check(
-            code=code, function_name="clamp_value", timeout_seconds=30
+            code=code, function_name="clamp_value", timeout_seconds=10
         )
 
         assert (
@@ -235,7 +235,7 @@ def categorize_value(x: int) -> str:
 '''
 
         result = symbolic_check(
-            code=code, function_name="categorize_value", timeout_seconds=30
+            code=code, function_name="categorize_value", timeout_seconds=10
         )
 
         # Should find the type violation at x == 50
@@ -268,7 +268,7 @@ def buggy_commutative_op(a: int, b: int) -> int:
 '''
 
         result = symbolic_check(
-            code=code, function_name="buggy_commutative_op", timeout_seconds=30
+            code=code, function_name="buggy_commutative_op", timeout_seconds=10
         )
 
         assert (
@@ -293,7 +293,7 @@ def buggy_associative_op(a: int, b: int, c: int) -> int:
 '''
 
         result = symbolic_check(
-            code=code, function_name="buggy_associative_op", timeout_seconds=30
+            code=code, function_name="buggy_associative_op", timeout_seconds=10
         )
 
         assert (
@@ -334,7 +334,7 @@ def average_slice(data: list, start: int) -> int:
 '''
 
         result = symbolic_check(
-            code=code, function_name="average_slice", timeout_seconds=30
+            code=code, function_name="average_slice", timeout_seconds=10
         )
 
         assert (
@@ -352,7 +352,7 @@ class TestErrorHandling:
         code = "def bad_syntax(x, y) return x + y"  # Missing colon
 
         result = symbolic_check(
-            code=code, function_name="bad_syntax", timeout_seconds=30
+            code=code, function_name="bad_syntax", timeout_seconds=10
         )
 
         assert (
@@ -367,7 +367,7 @@ class TestErrorHandling:
         code = "def existing_function(x): return x"
 
         result = symbolic_check(
-            code=code, function_name="missing_function", timeout_seconds=30
+            code=code, function_name="missing_function", timeout_seconds=10
         )
 
         assert (
@@ -386,7 +386,7 @@ def restricted_function():
 """
 
         result = symbolic_check(
-            code=code, function_name="restricted_function", timeout_seconds=30
+            code=code, function_name="restricted_function", timeout_seconds=10
         )
 
         assert (

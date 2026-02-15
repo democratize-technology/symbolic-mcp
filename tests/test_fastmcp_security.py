@@ -5,18 +5,10 @@ practices, particularly that error details are masked to prevent internal
 implementation details from leaking to clients.
 """
 
-import sys
-
 import pytest
 from fastmcp import FastMCP
 
-# Import the main module to access the configured mcp instance
-if __name__ == "__main__":
-    # When run as a script, add the parent directory to the path
-    sys.path.insert(0, "/Users/eringreen/Development/symbolic-mcp")
-    from main import mcp
-else:
-    from main import mcp
+from main import mcp
 
 
 class TestFastMCPSecurityConfiguration:
