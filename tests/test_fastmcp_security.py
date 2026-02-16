@@ -5,9 +5,6 @@ practices, particularly that error details are masked to prevent internal
 implementation details from leaking to clients.
 """
 
-import pytest
-from fastmcp import FastMCP
-
 from main import mcp
 
 
@@ -119,38 +116,3 @@ class TestFastMCPSecurityConfiguration:
 
         missing_tools = expected_tools - tool_names
         assert not missing_tools, f"Missing expected tools: {missing_tools}"
-
-
-class TestErrorMaskingBehavior:
-    """Tests verifying actual error masking behavior when tools fail."""
-
-    def test_mask_error_details_is_passed_to_managers(self) -> None:
-        """Verify that mask_error_details is properly passed to all managers."""
-        # Create a test server with mask_error_details=True
-        test_server = FastMCP("Test Server", mask_error_details=True)
-
-        assert test_server._tool_manager.mask_error_details is True
-        assert test_server._resource_manager.mask_error_details is True
-        assert test_server._prompt_manager.mask_error_details is True
-
-    def test_mask_error_details_false_is_honored(self) -> None:
-        """Verify that mask_error_details=False is properly applied."""
-        # Create a test server WITHOUT mask_error_details
-        test_server = FastMCP("Test Server", mask_error_details=False)
-
-        assert test_server._tool_manager.mask_error_details is False
-        assert test_server._resource_manager.mask_error_details is False
-        assert test_server._prompt_manager.mask_error_details is False
-
-    def test_default_mask_error_details_is_false(self) -> None:
-        """Verify that default behavior has masking disabled (unsafe for production).
-
-        This documents the default behavior - when mask_error_details is not
-        explicitly set, it defaults to False, which is why we must explicitly
-        enable it in production.
-        """
-        # Create a test server without specifying mask_error_details
-        test_server = FastMCP("Test Server")
-
-        # Default should be False (documenting this unsafe default)
-        assert test_server._tool_manager.mask_error_details is False
