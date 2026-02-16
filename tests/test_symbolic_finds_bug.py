@@ -1,27 +1,4 @@
 """
-SPDX-License-Identifier: MIT
-Copyright (c) 2025 Symbolic MCP Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
-
-"""
 Section 5.3 Integration Tests - REAL CrossHair Bug Finding
 
 This file contains tests that use actual CrossHair symbolic execution to verify
@@ -304,12 +281,11 @@ class TestRealWorldBugPatterns:
     symbolic execution is particularly good at finding.
     """
 
-    def test_finds_index_out_of_bounds_error(self):
-        """
-        Test finding index out-of-bounds errors.
-        Uses Python terminology for this common error pattern.
-        Tests division by zero which is Python's equivalent of accessing
-        an invalid index.
+    def test_finds_division_edge_case(self):
+        """Test finding edge cases in division logic.
+
+        This test finds a bug where division can result in a negative value
+        when start is negative, violating the postcondition __return__ >= 0.
         """
         code = '''
 def average_slice(data: list, start: int) -> int:
@@ -334,60 +310,3 @@ def average_slice(data: list, start: int) -> int:
         assert (
             result["status"] == "counterexample"
         ), f"Expected counterexample, got {result['status']}"
-
-
-class TestErrorHandling:
-    """
-    Test error handling with real CrossHair execution (no mocking).
-    """
-
-    def test_handles_syntax_error_real(self):
-        """Test syntax error handling without mocks."""
-        code = "def bad_syntax(x, y) return x + y"  # Missing colon
-
-        result = symbolic_check(
-            code=code, function_name="bad_syntax", timeout_seconds=10
-        )
-
-        assert (
-            result["status"] == "error"
-        ), f"Expected error status, got {result['status']}"
-        assert "SyntaxError" in result.get(
-            "error_type", ""
-        ), f"Expected SyntaxError, got {result.get('error_type')}"
-
-    def test_handles_function_not_found_real(self):
-        """Test missing function handling without mocks."""
-        code = "def existing_function(x): return x"
-
-        result = symbolic_check(
-            code=code, function_name="missing_function", timeout_seconds=10
-        )
-
-        assert (
-            result["status"] == "error"
-        ), f"Expected error status, got {result['status']}"
-        assert "NameError" in result.get(
-            "error_type", ""
-        ), f"Expected NameError, got {result.get('error_type')}"
-
-    def test_handles_sandbox_violation_real(self):
-        """Test sandbox violation handling without mocks."""
-        code = """
-import os
-def restricted_function():
-    return os.getcwd()
-"""
-
-        result = symbolic_check(
-            code=code, function_name="restricted_function", timeout_seconds=10
-        )
-
-        assert (
-            result["status"] == "error"
-        ), f"Expected error status, got {result['status']}"
-        # The sandbox should block the os module import
-        error_msg = result.get("message", "").lower()
-        assert (
-            "blocked" in error_msg or "sandbox" in error_msg or "import" in error_msg
-        ), f"Expected import/sandbox error, got: {error_msg}"

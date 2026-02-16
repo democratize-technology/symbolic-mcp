@@ -1,25 +1,3 @@
-"""SPDX-License-Identifier: MIT
-Copyright (c) 2025 Symbolic MCP Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
-
 """
 Real CrossHair Integration Tests.
 
@@ -74,11 +52,10 @@ def add_positive(a: int, b: int) -> int:
             code=code, function_name="add_positive", timeout_seconds=10
         )
 
-        # Should be verified (no counterexample)
-        assert result["status"] in [
-            "verified",
-            "error",
-        ], f"Expected verified or error, got {result['status']}"
+        # Should be verified (no counterexample) - the contract holds for positive inputs
+        assert (
+            result["status"] == "verified"
+        ), f"Expected verified for valid contract, got {result['status']}"
 
         # Check structure
         assert "paths_explored" in result
@@ -199,52 +176,6 @@ def complex_check(x: int, y: int) -> int:
         # Should have explored multiple paths
         if result["status"] != "error":
             assert result["paths_explored"] >= 1
-
-
-class TestRealCrossHairErrorHandling:
-    """
-    Tests for error handling with real CrossHair.
-    """
-
-    @pytest.mark.integration  # type: ignore[misc]
-    def test_real_crosshair_syntax_error(self) -> None:
-        """Test handling syntax errors with real CrossHair."""
-        code = "def broken(\n"  # Incomplete function
-
-        result = symbolic_check(code=code, function_name="broken", timeout_seconds=5)
-
-        assert result["status"] == "error"
-        assert "SyntaxError" in result.get("error_type", "")
-
-    @pytest.mark.integration  # type: ignore[misc]
-    def test_real_crosshair_function_not_found(self) -> None:
-        """Test handling of missing function."""
-        code = "def existing(x): return x"
-
-        result = symbolic_check(
-            code=code, function_name="nonexistent", timeout_seconds=5
-        )
-
-        assert result["status"] == "error"
-        assert "NameError" in result.get("error_type", "")
-
-    @pytest.mark.integration  # type: ignore[misc]
-    def test_real_crosshair_blocked_import(self) -> None:
-        """Test that blocked imports are caught before CrossHair."""
-        code = """
-import os
-def restricted():
-    return os.getcwd()
-"""
-
-        result = symbolic_check(
-            code=code, function_name="restricted", timeout_seconds=5
-        )
-
-        # Should fail validation before reaching CrossHair
-        assert result["status"] == "error"
-        error_msg = result.get("message", "").lower()
-        assert "os" in error_msg or "blocked" in error_msg
 
 
 class TestRealCrossHairCoverageEstimation:

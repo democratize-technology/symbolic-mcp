@@ -1,25 +1,3 @@
-"""SPDX-License-Identifier: MIT
-Copyright (c) 2025 Symbolic MCP Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
-
 """Unit tests for the validate_code() function.
 
 Consolidated from 39 tests to 7 essential tests that cover:
@@ -37,7 +15,7 @@ and the ALLOWED_MODULES/BLOCKED_MODULES constants have no CrossHair dependencies
 
 import pytest
 
-from main import ALLOWED_MODULES, BLOCKED_MODULES, validate_code
+from main import ALLOWED_MODULES, BLOCKED_MODULES, DANGEROUS_BUILTINS, validate_code
 
 pytestmark = pytest.mark.mocked
 
@@ -179,3 +157,10 @@ class TestModuleConfiguration:
         expected_dangerous = {"os", "sys", "subprocess", "pickle", "socket"}
         for module in expected_dangerous:
             assert module in BLOCKED_MODULES, f"Dangerous module not blocked: {module}"
+
+    def test_dangerous_builtins_constant(self) -> None:
+        """Verify DANGEROUS_BUILTINS constant is properly configured."""
+        assert isinstance(DANGEROUS_BUILTINS, frozenset)
+        assert "eval" in DANGEROUS_BUILTINS
+        assert "exec" in DANGEROUS_BUILTINS
+        assert "compile" in DANGEROUS_BUILTINS
