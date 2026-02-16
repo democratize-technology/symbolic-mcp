@@ -374,6 +374,18 @@ result = analyze_branches(
 - **[API Reference](docs/api.md)** - Complete tool reference
 - **[Examples](docs/examples.md)** - Comprehensive usage examples
 
+### Architecture Decision Records
+
+This project maintains a comprehensive ADR system following NASA-style documentation standards:
+
+- **[ADR Directory](docs/adr/)** - All architectural decisions with rationale
+- **[ADR Summary](docs/adr/SUMMARY.md)** - Quick reference for all 23 ADRs
+
+Key architectural decisions include:
+- **ADR-012**: Single-file monolith architecture for security auditability
+- **ADR-022**: Dangerous builtins blocking with AST bypass detection
+- **ADR-023**: Defense-in-depth security with 6 independent layers
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
