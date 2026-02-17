@@ -25,8 +25,8 @@ class TestResources:
     def test_security_resource_returns_dict(self) -> None:
         """Verify that security resource returns valid dict."""
         resource = mcp._resource_manager._resources["config://security"]
-        assert callable(resource.fn), "Resource should be callable"
-        result = resource.fn()
+        assert callable(resource.fn), "Resource should be callable"  # type: ignore[attr-defined]
+        result = resource.fn()  # type: ignore[attr-defined]
         assert isinstance(result, dict), "Security resource should return dict"
         assert "allowed_modules" in result
         assert "blocked_modules" in result
@@ -35,8 +35,8 @@ class TestResources:
     def test_server_resource_returns_dict(self) -> None:
         """Verify that server resource returns valid dict."""
         resource = mcp._resource_manager._resources["config://server"]
-        assert callable(resource.fn), "Resource should be callable"
-        result = resource.fn()
+        assert callable(resource.fn), "Resource should be callable"  # type: ignore[attr-defined]
+        result = resource.fn()  # type: ignore[attr-defined]
         assert isinstance(result, dict), "Server resource should return dict"
         assert "version" in result
         assert "mask_error_details" in result
@@ -45,8 +45,8 @@ class TestResources:
     def test_capabilities_resource_returns_dict(self) -> None:
         """Verify that capabilities resource returns valid dict."""
         resource = mcp._resource_manager._resources["info://capabilities"]
-        assert callable(resource.fn), "Resource should be callable"
-        result = resource.fn()
+        assert callable(resource.fn), "Resource should be callable"  # type: ignore[attr-defined]
+        result = resource.fn()  # type: ignore[attr-defined]
         assert isinstance(result, dict), "Capabilities resource should return dict"
         assert "tools" in result
         assert "resources" in result
@@ -73,14 +73,14 @@ class TestPrompts:
         """Verify that all prompts return strings."""
         for name in mcp._prompt_manager._prompts.keys():
             prompt = mcp._prompt_manager._prompts[name]
-            assert callable(prompt.fn), f"Prompt {name} should be callable"
-            result = prompt.fn()
+            assert callable(prompt.fn), f"Prompt {name} should be callable"  # type: ignore[attr-defined]
+            result = prompt.fn()  # type: ignore[attr-defined]
             assert isinstance(result, str), f"Prompt {name} should return str"
 
     def test_prompt_contains_placeholders(self) -> None:
         """Verify that prompts contain expected placeholders."""
         prompt = mcp._prompt_manager._prompts["symbolic_check_template"]
-        assert callable(prompt.fn), "Prompt should be callable"
-        symbolic_check = prompt.fn()
+        assert callable(prompt.fn), "Prompt should be callable"  # type: ignore[attr-defined]
+        symbolic_check = prompt.fn()  # type: ignore[attr-defined]
         assert "{{code}}" in symbolic_check
         assert "{{function_name}}" in symbolic_check

@@ -12,7 +12,7 @@ pytestmark = pytest.mark.integration
 
 
 # Test 1: Basic Counterexample Finding
-def test_finds_needle_in_haystack():
+def test_finds_needle_in_haystack() -> None:
     code = """
 def tricky(x: int, y: int) -> int:
     \"\"\"post: _ != 42\"\"\"
@@ -31,7 +31,7 @@ def tricky(x: int, y: int) -> int:
 
 
 # Test 2: Exception Hunting
-def test_find_path_to_exception():
+def test_find_path_to_exception() -> None:
     code = """
 def unsafe(x: int) -> int:
     \"\"\"post: True\"\"\"
@@ -51,7 +51,7 @@ def unsafe(x: int) -> int:
 
 
 # Test 3: Unreachable Exception
-def test_unreachable_exception():
+def test_unreachable_exception() -> None:
     code = """
 def safe(x: int) -> int:
     \"\"\"post: True\"\"\"
@@ -67,7 +67,7 @@ def safe(x: int) -> int:
 
 
 # Test 4: Equivalence Checking
-def test_equivalence_check_bug():
+def test_equivalence_check_bug() -> None:
     code = """
 def impl_a(x: int) -> int:
     return x * 2
@@ -80,11 +80,12 @@ def impl_b(x: int) -> int:
     )
 
     assert result["status"] == "different"
+    assert result["distinguishing_input"] is not None
     assert result["distinguishing_input"]["args"]["x"] == 0
 
 
 # Test 5: Branch Analysis (Static Check)
-def test_branch_analysis_structure():
+def test_branch_analysis_structure() -> None:
     code = """
 def branches(x: int):
     if x > 0:

@@ -25,7 +25,7 @@ from main import logic_analyze_branches as analyze_branches
 class TestCyclomaticComplexity:
     """Test cyclomatic complexity calculation."""
 
-    def test_simple_function_complexity(self):
+    def test_simple_function_complexity(self) -> None:
         """Function with no decision points should have complexity 1."""
         code = """
 def simple_function(x: int) -> int:
@@ -40,7 +40,7 @@ def simple_function(x: int) -> int:
             result["cyclomatic_complexity"] == 1
         ), f"Expected complexity 1, got {result['cyclomatic_complexity']}"
 
-    def test_single_if_complexity(self):
+    def test_single_if_complexity(self) -> None:
         """Single if statement: complexity = 1 (base) + 1 (if) = 2."""
         code = """
 def single_if(x: int) -> int:
@@ -57,7 +57,7 @@ def single_if(x: int) -> int:
             result["cyclomatic_complexity"] == 2
         ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
 
-    def test_if_elif_chain_complexity(self):
+    def test_if_elif_chain_complexity(self) -> None:
         """
         Test if/elif chain - THIS EXPOSES THE BUG.
 
@@ -102,7 +102,7 @@ def if_elif_chain(x: int) -> int:
             f"This indicates elif branches are being double-counted by ast.walk()"
         )
 
-    def test_nested_if_complexity(self):
+    def test_nested_if_complexity(self) -> None:
         """Nested if statements should count each level."""
         code = """
 def nested_if(x: int, y: int) -> int:
@@ -122,7 +122,7 @@ def nested_if(x: int, y: int) -> int:
             result["cyclomatic_complexity"] == 3
         ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
 
-    def test_while_loop_complexity(self):
+    def test_while_loop_complexity(self) -> None:
         """While loop adds one decision point."""
         code = """
 def while_loop(n: int) -> int:
@@ -142,7 +142,7 @@ def while_loop(n: int) -> int:
             result["cyclomatic_complexity"] == 2
         ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
 
-    def test_for_loop_complexity(self):
+    def test_for_loop_complexity(self) -> None:
         """For loop adds one decision point."""
         code = """
 def for_loop(items: list) -> int:
@@ -161,7 +161,7 @@ def for_loop(items: list) -> int:
             result["cyclomatic_complexity"] == 2
         ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
 
-    def test_boolop_and_complexity(self):
+    def test_boolop_and_complexity(self) -> None:
         """
         BoolOp with 'and' adds complexity for each additional operand.
 
@@ -183,7 +183,7 @@ def boolop_and(x: int, y: int, z: int) -> bool:
             result["cyclomatic_complexity"] == 4
         ), f"Expected complexity 4, got {result['cyclomatic_complexity']}"
 
-    def test_boolop_or_complexity(self):
+    def test_boolop_or_complexity(self) -> None:
         """BoolOp with 'or' adds complexity for each additional operand."""
         code = """
 def boolop_or(x: int, y: int) -> bool:
@@ -201,7 +201,7 @@ def boolop_or(x: int, y: int) -> bool:
             result["cyclomatic_complexity"] == 3
         ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
 
-    def test_complex_function_complexity(self):
+    def test_complex_function_complexity(self) -> None:
         """Complex function with multiple decision point types."""
         code = """
 def complex_function(items: list, x: int) -> int:
@@ -238,7 +238,7 @@ def complex_function(items: list, x: int) -> int:
             result["cyclomatic_complexity"] == 7
         ), f"Expected complexity 7, got {result['cyclomatic_complexity']}"
 
-    def test_elif_without_else_complexity(self):
+    def test_elif_without_else_complexity(self) -> None:
         """if/elif chain without else."""
         code = """
 def if_elif_no_else(x: int) -> int:
@@ -258,7 +258,7 @@ def if_elif_no_else(x: int) -> int:
             result["cyclomatic_complexity"] == 3
         ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
 
-    def test_multiple_boolops_in_if(self):
+    def test_multiple_boolops_in_if(self) -> None:
         """Multiple BoolOps should each add complexity."""
         code = """
 def multiple_boolops(x: int, y: int, z: int) -> bool:
@@ -281,7 +281,7 @@ def multiple_boolops(x: int, y: int, z: int) -> bool:
             result["cyclomatic_complexity"] == 5
         ), f"Expected complexity 5, got {result['cyclomatic_complexity']}"
 
-    def test_if_with_else_no_elif(self):
+    def test_if_with_else_no_elif(self) -> None:
         """Simple if/else without elif."""
         code = """
 def if_else(x: int) -> int:

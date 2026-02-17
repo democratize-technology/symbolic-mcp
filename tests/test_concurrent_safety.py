@@ -23,7 +23,7 @@ from main import _SymbolicCheckResult
 class TestSysModulesConcurrency:
     """Test thread safety of sys.modules access in _temporary_module."""
 
-    def test_concurrent_temp_module_creation_no_exceptions(self):
+    def test_concurrent_temp_module_creation_no_exceptions(self) -> None:
         """Concurrent calls to _temporary_module should not raise exceptions.
 
         This test creates many temporary modules concurrently, verifying that
@@ -76,7 +76,7 @@ def add(a: int, b: int) -> int:
         assert len(results) == num_threads
         assert all(r == 3 for r in results)
 
-    def test_concurrent_symbolic_check(self):
+    def test_concurrent_symbolic_check(self) -> None:
         """Concurrent symbolic_check calls should not raise exceptions.
 
         This tests the full analysis pipeline under concurrency, which
@@ -131,7 +131,7 @@ def multiply(x: int, y: int) -> int:
         # Verify all results have a status field (i.e., didn't crash in _temporary_module)
         assert all("status" in r for r in results)
 
-    def test_sys_modules_lock_effectiveness(self):
+    def test_sys_modules_lock_effectiveness(self) -> None:
         """Verify that _SYS_MODULES_LOCK actually prevents race conditions.
 
         This test directly manipulates sys.modules to verify that the lock
@@ -174,7 +174,7 @@ def multiply(x: int, y: int) -> int:
         ), "At least one thread should acquire the lock"
         assert successful_acquisitions[0] + lock_contention_count[0] == num_threads
 
-    def test_no_module_leak_after_concurrent_use(self):
+    def test_no_module_leak_after_concurrent_use(self) -> None:
         """Verify that temporary modules are cleaned up after concurrent use.
 
         This test ensures that the cleanup in _temporary_module's finally
@@ -216,7 +216,7 @@ def dummy(x: int) -> int:
             f"temporary modules not cleaned up"
         )
 
-    def test_concurrent_with_exception_in_module_body(self):
+    def test_concurrent_with_exception_in_module_body(self) -> None:
         """Concurrent calls with exceptions in module code should still clean up.
 
         This tests that the finally block in _temporary_module runs correctly
@@ -253,7 +253,7 @@ def broken():
         # All threads should have caught the ValueError
         assert exceptions_caught == num_threads
 
-    def test_concurrent_compare_functions(self):
+    def test_concurrent_compare_functions(self) -> None:
         """Test concurrent compare_functions for race conditions.
 
         This exercises multiple _temporary_module calls within a single
@@ -306,7 +306,7 @@ def add_one_v2(x: int) -> int:
         # The important assertion: no KeyError (race condition)
         # Other exceptions (like Z3 errors) are acceptable under high concurrency
 
-    def test_concurrent_find_path_to_exception(self):
+    def test_concurrent_find_path_to_exception(self) -> None:
         """Test concurrent find_path_to_exception for race conditions."""
         code = """
 def divide(x: int, y: int) -> float:
@@ -338,15 +338,15 @@ def divide(x: int, y: int) -> float:
 class TestSysModulesLockAttributes:
     """Verify the lock has the expected properties."""
 
-    def test_lock_is_threading_lock(self):
+    def test_lock_is_threading_lock(self) -> None:
         """The _SYS_MODULES_LOCK should be a threading.Lock."""
         assert isinstance(main._SYS_MODULES_LOCK, type(threading.Lock()))
 
-    def test_lock_is_module_level(self):
+    def test_lock_is_module_level(self) -> None:
         """The lock should be defined at module level."""
         assert hasattr(main, "_SYS_MODULES_LOCK")
 
-    def test_lock_is_recursive_safe(self):
+    def test_lock_is_recursive_safe(self) -> None:
         """Verify the lock works correctly for acquire/release."""
         # Should be able to acquire
         assert main._SYS_MODULES_LOCK.acquire(blocking=True)

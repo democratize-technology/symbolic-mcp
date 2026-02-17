@@ -31,7 +31,7 @@ def pytest_configure(config: Config) -> None:
     config.addinivalue_line("markers", "mocked: Tests using CrossHair mocks")
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+@pytest.fixture(autouse=True)
 def clean_symbolic_env_per_test() -> Generator[None, None, None]:
     """Clear SYMBOLIC_* environment variables before each test.
 

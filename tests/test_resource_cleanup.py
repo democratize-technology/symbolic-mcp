@@ -12,7 +12,7 @@ import importlib.util
 import os
 import tempfile
 from contextlib import contextmanager
-from typing import Generator, List
+from typing import Any, Generator, List
 from unittest.mock import patch
 
 import pytest
@@ -30,7 +30,7 @@ def track_temp_files() -> Generator[List[str], None, None]:
     created: List[str] = []
     original = tempfile.NamedTemporaryFile
 
-    def tracker(*args, **kwargs):
+    def tracker(*args: Any, **kwargs: Any) -> Any:
         result = original(*args, **kwargs)
         created.append(result.name)
         return result
@@ -42,7 +42,7 @@ def track_temp_files() -> Generator[List[str], None, None]:
 class TestTemporaryFileCleanup:
     """Tests for temporary file cleanup."""
 
-    def test_temporary_module_context_manager_cleanup_on_success(self):
+    def test_temporary_module_context_manager_cleanup_on_success(self) -> None:
         """Test that _temporary_module cleans up on normal exit."""
         analyzer = SymbolicAnalyzer()
 
@@ -65,7 +65,7 @@ def simple_function(x: int) -> int:
                     temp_file
                 ), f"Temp file not cleaned up: {temp_file}"
 
-    def test_temporary_module_context_manager_cleanup_on_error(self):
+    def test_temporary_module_context_manager_cleanup_on_error(self) -> None:
         """Test that _temporary_module cleans up even when module loading fails."""
         analyzer = SymbolicAnalyzer()
 
@@ -88,7 +88,7 @@ def broken_function():
                     temp_file
                 ), f"Temp file not cleaned up on error: {temp_file}"
 
-    def test_find_path_to_exception_cleans_up_temp_files(self):
+    def test_find_path_to_exception_cleans_up_temp_files(self) -> None:
         """Test that logic_find_path_to_exception properly cleans up temp files."""
         code = """
 def test_func(x: int) -> int:
@@ -108,7 +108,7 @@ def test_func(x: int) -> int:
                     temp_file
                 ), f"Temp file not cleaned up: {temp_file}"
 
-    def test_find_path_to_exception_cleans_up_on_validation_error(self):
+    def test_find_path_to_exception_cleans_up_on_validation_error(self) -> None:
         """Test cleanup when validation fails early."""
         # Invalid code with dangerous function call
         code = """
@@ -130,7 +130,7 @@ def test_func():
                     temp_file
                 ), f"Temp file not cleaned up: {temp_file}"
 
-    def test_compare_functions_cleans_up_temp_files(self):
+    def test_compare_functions_cleans_up_temp_files(self) -> None:
         """Test that logic_compare_functions properly cleans up temp files."""
         code = """
 def func_a(x: int) -> int:
@@ -153,7 +153,7 @@ def func_b(x: int) -> int:
                     temp_file
                 ), f"Temp file not cleaned up: {temp_file}"
 
-    def test_compare_functions_cleans_up_on_validation_error(self):
+    def test_compare_functions_cleans_up_on_validation_error(self) -> None:
         """Test cleanup when validation fails early in compare_functions."""
         # Invalid code with dangerous function call
         code = """
@@ -178,7 +178,7 @@ def func_b():
                     temp_file
                 ), f"Temp file not cleaned up: {temp_file}"
 
-    def test_temporary_module_cleanup_on_exception_before_try(self):
+    def test_temporary_module_cleanup_on_exception_before_try(self) -> None:
         """Test the race condition where exception occurs before try block.
 
         This simulates the scenario where an exception could occur between
@@ -194,7 +194,7 @@ def simple_function(x: int) -> int:
         # Even if spec_from_file_location fails, cleanup should happen
         call_count = [0]
 
-        def failing_spec_from_file_location(*args, **kwargs):
+        def failing_spec_from_file_location(*args: Any, **kwargs: Any) -> Any:
             """Make spec_from_file_location fail on first call."""
             call_count[0] += 1
             if call_count[0] == 1:

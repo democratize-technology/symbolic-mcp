@@ -4,11 +4,19 @@ All symbolic execution functions share the same validation layer, so testing
 error handling once with parameterized tests covers all entry points.
 """
 
+from typing import Callable, Union
+
 import pytest
 
+from main import _ExceptionPathResult, _FunctionComparisonResult, _SymbolicCheckResult
 from main import logic_compare_functions as compare_functions
 from main import logic_find_path_to_exception as find_path_to_exception
 from main import logic_symbolic_check as symbolic_check
+
+# Type alias for the test functions
+_TestFunc = Callable[
+    [str], Union[_SymbolicCheckResult, _FunctionComparisonResult, _ExceptionPathResult]
+]
 
 # All tests in this file are integration tests
 pytestmark = pytest.mark.integration
@@ -98,7 +106,7 @@ class TestSyntaxErrorHandling:
     """Tests for syntax error handling across all symbolic execution functions."""
 
     @pytest.mark.parametrize("func_name,func", SYNTAX_ERROR_CASES)
-    def test_handles_syntax_error(self, func_name: str, func) -> None:
+    def test_handles_syntax_error(self, func_name: str, func: _TestFunc) -> None:
         """Test that all functions handle syntax errors gracefully."""
         code = "def broken(\n"  # Incomplete function
         result = func(code)
@@ -112,7 +120,7 @@ class TestMissingFunctionHandling:
     """Tests for missing function handling across all symbolic execution functions."""
 
     @pytest.mark.parametrize("func_name,func", MISSING_FUNCTION_CASES)
-    def test_handles_missing_function(self, func_name: str, func) -> None:
+    def test_handles_missing_function(self, func_name: str, func: _TestFunc) -> None:
         """Test that all functions handle missing functions gracefully."""
         code = "def existing(x): return x"
         result = func(code)
@@ -127,7 +135,7 @@ class TestSandboxViolationHandling:
     """Tests for sandbox violation handling across all symbolic execution functions."""
 
     @pytest.mark.parametrize("func_name,func", SANDBOX_VIOLATION_CASES)
-    def test_blocks_dangerous_imports(self, func_name: str, func) -> None:
+    def test_blocks_dangerous_imports(self, func_name: str, func: _TestFunc) -> None:
         """Test that all functions block dangerous imports."""
         code = """
 import os
