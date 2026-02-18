@@ -5,11 +5,13 @@ capabilities using CrossHair for formal verification and analysis.
 """
 
 import ast
+import concurrent.futures
 import contextlib
 import importlib.util
 import inspect
 import logging
 import math
+import multiprocessing
 import os
 import re
 import resource
@@ -586,7 +588,19 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         - __builtins__.eval
         - __builtins__.exec
         - __builtins__.compile
+        - Introspection gadgets: __subclasses__, __bases__, __mro__, __globals__
         """
+        # check for introspection gadgets
+        if node.attr in (
+            "__subclasses__",
+            "__bases__",
+            "__mro__",
+            "__globals__",
+            "__class__",
+            "__code__",
+        ):
+            self.dangerous_calls.append(f"introspection via {node.attr}")
+
         # Check if this is accessing an attribute of __builtins__
         if isinstance(node.value, ast.Name):
             if node.value.id == "__builtins__":
@@ -857,8 +871,237 @@ def _temporary_module(code: str) -> Generator[types.ModuleType, None, None]:
                 logger.debug(f"Failed to delete temporary file {tmp_path}: {e}")
 
 
+def _run_analysis_in_process(
+    code: str, target_function_name: str, timeout: float
+) -> _SymbolicCheckResult:
+    """Run symbolic analysis in a separate process for isolation.
+
+    This function contains the core CrossHair analysis logic. It is designed
+    to be run in a separate process via ProcessPoolExecutor to isolate
+    the main server from Z3 crashes and memory leaks.
+    """
+    start_time = time.perf_counter()
+    try:
+        # Use module-level _temporary_module
+        with _temporary_module(code) as module:
+            if not hasattr(module, target_function_name):
+                elapsed = time.perf_counter() - start_time
+                return {
+                    "status": "error",
+                    "counterexamples": [],
+                    "paths_explored": 0,
+                    "paths_verified": 0,
+                    "time_seconds": round(elapsed, 4),
+                    "coverage_estimate": 0.0,
+                    "error_type": "NameError",
+                    "message": f"Function '{target_function_name}' not found",
+                }
+
+            func = getattr(module, target_function_name)
+
+            # Create AnalysisOptionSet with proper configuration
+            # Use both asserts (for assert statements) and PEP316 (for docstring contracts)
+            options = AnalysisOptionSet(
+                analysis_kind=[AnalysisKind.asserts, AnalysisKind.PEP316],
+                per_condition_timeout=float(timeout),
+                per_path_timeout=float(timeout) * PER_PATH_TIMEOUT_RATIO,
+            )
+
+            # Get checkables from analyze_function
+            checkables = analyze_function(func, options)
+
+            counterexamples: list[_Counterexample] = []
+            paths_explored = 0
+            paths_verified = 0
+
+            if checkables:
+                # Run checkables to get analysis messages
+                messages: list[AnalysisMessage] = list(run_checkables(checkables))
+
+                # Get function signature for proper arg name mapping
+                try:
+                    func_sig = (
+                        inspect.signature(func)
+                        if hasattr(inspect, "signature")
+                        else None
+                    )
+                except ValueError:
+                    # inspect.signature() raises ValueError for builtin functions
+                    # and C extensions. Fall back to no signature info.
+                    func_sig = None
+                param_names = list(func_sig.parameters.keys()) if func_sig else []
+
+                for message in messages:
+                    paths_explored += 1
+                    if message.state == MessageType.CONFIRMED:
+                        paths_verified += 1
+                    elif message.state in (
+                        MessageType.POST_FAIL,
+                        MessageType.PRE_UNSAT,
+                        MessageType.POST_ERR,
+                        MessageType.EXEC_ERR,
+                    ):
+                        # Extract counterexample from message
+                        # Parse the message to extract args if present
+                        # Message format: "false when calling func(arg1, arg2) (which returns ...)"
+                        # Or: "ExceptionType: when calling func(arg1, arg2)"
+                        args: dict[str, int | bool | None | str] = {}
+                        kwargs: dict[str, int | bool | None | str] = {}
+                        actual_result = ""
+                        path_condition = ""
+
+                        # Try to parse the function call from the message
+                        match = _CALL_PATTERN.search(message.message)
+                        if match:
+                            args_str = match.group(2)
+                            if args_str:
+                                # Parse positional args with proper handling of nested expressions
+                                # This handles cases like "float('nan')" which contain commas
+                                arg_values = _parse_function_args(args_str)
+                                # Try to convert to appropriate types
+                                for i, val in enumerate(arg_values):
+                                    # Use actual parameter name if available
+                                    arg_name = (
+                                        param_names[i]
+                                        if i < len(param_names)
+                                        else f"arg{i}"
+                                    )
+                                    # Try int first - safe parsing with try/except
+                                    # This handles both positive and negative integers
+                                    # and properly rejects invalid formats like "--123"
+                                    try:
+                                        args[arg_name] = int(val)
+                                    except ValueError:
+                                        # Not an integer, check for other known values
+                                        if val == "True":
+                                            args[arg_name] = True
+                                        elif val == "False":
+                                            args[arg_name] = False
+                                        elif val == "None":
+                                            args[arg_name] = None
+                                        else:
+                                            args[arg_name] = val
+
+                                # Build path_condition from the arg values
+                                # This represents the input condition that led to the violation
+                                if args:
+                                    conditions = []
+                                    for arg_name, arg_val in args.items():
+                                        if isinstance(arg_val, str) and '"' in arg_val:
+                                            # Handle string representations like 'float("nan")'
+                                            conditions.append(f"{arg_name}={arg_val}")
+                                        else:
+                                            conditions.append(
+                                                f"{arg_name}={repr(arg_val)}"
+                                            )
+                                    path_condition = ", ".join(conditions)
+
+                        # Extract actual_result from message
+                        # Pattern: "which returns X)" at the end of the message
+                        result_match = _RESULT_PATTERN.search(message.message)
+                        if result_match:
+                            actual_result = result_match.group(1).strip()
+                        else:
+                            # Fallback: try to find exception result
+                            # Some messages have format: "ExceptionType: ... when calling ..."
+                            exc_match = _EXC_PATTERN.match(message.message)
+                            if exc_match:
+                                actual_result = (
+                                    f"exception: {exc_match.group(0).rstrip(':')}"
+                                )
+
+                        counterexamples.append(
+                            {
+                                "args": args,
+                                "kwargs": kwargs,
+                                "violation": message.message,
+                                "actual_result": actual_result,
+                                "path_condition": path_condition,
+                            }
+                        )
+
+            elapsed = time.perf_counter() - start_time
+
+            # Determine status based on analysis results
+            # Valid statuses per spec: "verified", "counterexample", "timeout", "error"
+            status: Literal["verified", "counterexample", "timeout", "error"] = (
+                "verified"
+            )
+            if counterexamples:
+                status = "counterexample"
+            # Note: paths_explored == 0 with no counterexamples means no contracts to verify
+            # This is treated as "verified" since nothing was disproven
+
+            # Calculate coverage estimate based on paths explored using logarithmic scaling
+            # This provides a more gradual degradation than a binary threshold
+            # - For small path counts: coverage approaches 1.0 (exhaustive)
+            # - For large path counts: coverage scales logarithmically
+            if paths_explored == 0:
+                # No paths explored (no contracts) = unknown coverage
+                coverage_estimate = 1.0
+            elif paths_explored < COVERAGE_EXHAUSTIVE_THRESHOLD:
+                # Below threshold: treat as exhaustive
+                coverage_estimate = 1.0
+            else:
+                # Above threshold: use logarithmic scaling
+                # Formula: 1.0 - log(paths/threshold) / log(max_paths) * COVERAGE_DEGRADATION_FACTOR
+                #
+                # Coverage degradation behavior (using module-level constants):
+                # - At 1x threshold: coverage = 1.0
+                # - At 10x threshold: coverage ≈ 0.94
+                # - At 100x threshold: coverage ≈ 0.77
+                scale_factor = min(
+                    paths_explored / COVERAGE_EXHAUSTIVE_THRESHOLD,
+                    MAX_COVERAGE_SCALE_FACTOR,
+                )
+                coverage_estimate = (
+                    1.0
+                    - (math.log(scale_factor) / math.log(MAX_COVERAGE_SCALE_FACTOR))
+                    * COVERAGE_DEGRADATION_FACTOR
+                )
+                coverage_estimate = round(coverage_estimate, 4)
+
+            return {
+                "status": status,
+                "counterexamples": counterexamples,
+                "paths_explored": paths_explored,
+                "paths_verified": paths_verified,
+                "time_seconds": round(elapsed, 4),
+                "coverage_estimate": coverage_estimate,
+            }
+
+    except ImportError as e:
+        elapsed = time.perf_counter() - start_time
+        return {
+            "status": "error",
+            "counterexamples": [],
+            "paths_explored": 0,
+            "paths_verified": 0,
+            "time_seconds": round(elapsed, 4),
+            "coverage_estimate": 0.0,
+            "error_type": "ImportError",
+            "message": str(e),
+        }
+    except Exception as e:
+        elapsed = time.perf_counter() - start_time
+        return {
+            "status": "error",
+            "counterexamples": [],
+            "paths_explored": 0,
+            "paths_verified": 0,
+            "time_seconds": round(elapsed, 4),
+            "coverage_estimate": 0.0,
+            "error_type": type(e).__name__,
+            "message": str(e),
+        }
+
+
 class SymbolicAnalyzer:
-    """Analyzes code using CrossHair symbolic execution."""
+    """Analyzes code using CrossHair symbolic execution.
+
+    This class delegates actual execution to a separate process via
+    ProcessPoolExecutor to ensure robust isolation and cleanup.
+    """
 
     def __init__(self, timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS) -> None:
         self.timeout = timeout_seconds
@@ -886,219 +1129,39 @@ class SymbolicAnalyzer:
                 "message": error_msg,
             }
 
+        # Run analysis in a separate process
+        # We use a max_workers=1 pool that is created per-request to ensure a fresh process
+        # for each analysis, maximizing isolation.
+        process_timeout = float(self.timeout) + 5.0
+
         try:
-            with self._temporary_module(code) as module:
-                if not hasattr(module, target_function_name):
-                    elapsed = time.perf_counter() - start_time
+            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    _run_analysis_in_process,
+                    code,
+                    target_function_name,
+                    float(self.timeout),
+                )
+                try:
+                    return future.result(timeout=process_timeout)
+                except concurrent.futures.TimeoutError:
+                    # Return a timeout result
                     return {
-                        "status": "error",
+                        "status": "timeout",
                         "counterexamples": [],
                         "paths_explored": 0,
                         "paths_verified": 0,
-                        "time_seconds": round(elapsed, 4),
+                        "time_seconds": round(time.perf_counter() - start_time, 4),
                         "coverage_estimate": 0.0,
-                        "error_type": "NameError",
-                        "message": f"Function '{target_function_name}' not found",
+                        "message": f"Analysis timed out after {process_timeout} seconds",
                     }
-
-                func = getattr(module, target_function_name)
-
-                # Create AnalysisOptionSet with proper configuration
-                # Use both asserts (for assert statements) and PEP316 (for docstring contracts)
-                options = AnalysisOptionSet(
-                    analysis_kind=[AnalysisKind.asserts, AnalysisKind.PEP316],
-                    per_condition_timeout=float(self.timeout),
-                    per_path_timeout=float(self.timeout) * PER_PATH_TIMEOUT_RATIO,
-                )
-
-                # Get checkables from analyze_function
-                checkables = analyze_function(func, options)
-
-                counterexamples: list[_Counterexample] = []
-                paths_explored = 0
-                paths_verified = 0
-
-                if checkables:
-                    # Run checkables to get analysis messages
-                    messages: list[AnalysisMessage] = list(run_checkables(checkables))
-
-                    # Get function signature for proper arg name mapping
-                    try:
-                        func_sig = (
-                            inspect.signature(func)
-                            if hasattr(inspect, "signature")
-                            else None
-                        )
-                    except ValueError:
-                        # inspect.signature() raises ValueError for builtin functions
-                        # and C extensions. Fall back to no signature info.
-                        func_sig = None
-                    param_names = list(func_sig.parameters.keys()) if func_sig else []
-
-                    for message in messages:
-                        paths_explored += 1
-                        if message.state == MessageType.CONFIRMED:
-                            paths_verified += 1
-                        elif message.state in (
-                            MessageType.POST_FAIL,
-                            MessageType.PRE_UNSAT,
-                            MessageType.POST_ERR,
-                            MessageType.EXEC_ERR,
-                        ):
-                            # Extract counterexample from message
-                            # Parse the message to extract args if present
-                            # Message format: "false when calling func(arg1, arg2) (which returns ...)"
-                            # Or: "ExceptionType: when calling func(arg1, arg2)"
-                            args: dict[str, int | bool | None | str] = {}
-                            kwargs: dict[str, int | bool | None | str] = {}
-                            actual_result = ""
-                            path_condition = ""
-
-                            # Try to parse the function call from the message
-                            match = _CALL_PATTERN.search(message.message)
-                            if match:
-                                args_str = match.group(2)
-                                if args_str:
-                                    # Parse positional args with proper handling of nested expressions
-                                    # This handles cases like "float('nan')" which contain commas
-                                    arg_values = _parse_function_args(args_str)
-                                    # Try to convert to appropriate types
-                                    for i, val in enumerate(arg_values):
-                                        # Use actual parameter name if available
-                                        arg_name = (
-                                            param_names[i]
-                                            if i < len(param_names)
-                                            else f"arg{i}"
-                                        )
-                                        # Try int first - safe parsing with try/except
-                                        # This handles both positive and negative integers
-                                        # and properly rejects invalid formats like "--123"
-                                        try:
-                                            args[arg_name] = int(val)
-                                        except ValueError:
-                                            # Not an integer, check for other known values
-                                            if val == "True":
-                                                args[arg_name] = True
-                                            elif val == "False":
-                                                args[arg_name] = False
-                                            elif val == "None":
-                                                args[arg_name] = None
-                                            else:
-                                                args[arg_name] = val
-
-                                    # Build path_condition from the arg values
-                                    # This represents the input condition that led to the violation
-                                    if args:
-                                        conditions = []
-                                        for arg_name, arg_val in args.items():
-                                            if (
-                                                isinstance(arg_val, str)
-                                                and '"' in arg_val
-                                            ):
-                                                # Handle string representations like 'float("nan")'
-                                                conditions.append(
-                                                    f"{arg_name}={arg_val}"
-                                                )
-                                            else:
-                                                conditions.append(
-                                                    f"{arg_name}={repr(arg_val)}"
-                                                )
-                                        path_condition = ", ".join(conditions)
-
-                            # Extract actual_result from message
-                            # Pattern: "which returns X)" at the end of the message
-                            result_match = _RESULT_PATTERN.search(message.message)
-                            if result_match:
-                                actual_result = result_match.group(1).strip()
-                            else:
-                                # Fallback: try to find exception result
-                                # Some messages have format: "ExceptionType: ... when calling ..."
-                                exc_match = _EXC_PATTERN.match(message.message)
-                                if exc_match:
-                                    actual_result = (
-                                        f"exception: {exc_match.group(0).rstrip(':')}"
-                                    )
-
-                            counterexamples.append(
-                                {
-                                    "args": args,
-                                    "kwargs": kwargs,
-                                    "violation": message.message,
-                                    "actual_result": actual_result,
-                                    "path_condition": path_condition,
-                                }
-                            )
-
-                elapsed = time.perf_counter() - start_time
-
-                # Determine status based on analysis results
-                # Valid statuses per spec: "verified", "counterexample", "timeout", "error"
-                status: Literal["verified", "counterexample", "timeout", "error"] = (
-                    "verified"
-                )
-                if counterexamples:
-                    status = "counterexample"
-                # Note: paths_explored == 0 with no counterexamples means no contracts to verify
-                # This is treated as "verified" since nothing was disproven
-
-                # Calculate coverage estimate based on paths explored using logarithmic scaling
-                # This provides a more gradual degradation than a binary threshold
-                # - For small path counts: coverage approaches 1.0 (exhaustive)
-                # - For large path counts: coverage scales logarithmically
-                if paths_explored == 0:
-                    # No paths explored (no contracts) = unknown coverage
-                    coverage_estimate = 1.0
-                elif paths_explored < COVERAGE_EXHAUSTIVE_THRESHOLD:
-                    # Below threshold: treat as exhaustive
-                    coverage_estimate = 1.0
-                else:
-                    # Above threshold: use logarithmic scaling
-                    # Formula: 1.0 - log(paths/threshold) / log(max_paths) * COVERAGE_DEGRADATION_FACTOR
-                    #
-                    # Coverage degradation behavior (using module-level constants):
-                    # - At 1x threshold: coverage = 1.0
-                    # - At 10x threshold: coverage ≈ 0.94
-                    # - At 100x threshold: coverage ≈ 0.77
-                    scale_factor = min(
-                        paths_explored / COVERAGE_EXHAUSTIVE_THRESHOLD,
-                        MAX_COVERAGE_SCALE_FACTOR,
-                    )
-                    coverage_estimate = (
-                        1.0
-                        - (math.log(scale_factor) / math.log(MAX_COVERAGE_SCALE_FACTOR))
-                        * COVERAGE_DEGRADATION_FACTOR
-                    )
-                    coverage_estimate = round(coverage_estimate, 4)
-
-                return {
-                    "status": status,
-                    "counterexamples": counterexamples,
-                    "paths_explored": paths_explored,
-                    "paths_verified": paths_verified,
-                    "time_seconds": round(elapsed, 4),
-                    "coverage_estimate": coverage_estimate,
-                }
-
-        except ImportError as e:
-            elapsed = time.perf_counter() - start_time
-            return {
-                "status": "error",
-                "counterexamples": [],
-                "paths_explored": 0,
-                "paths_verified": 0,
-                "time_seconds": round(elapsed, 4),
-                "coverage_estimate": 0.0,
-                "error_type": "ImportError",
-                "message": str(e),
-            }
         except Exception as e:
-            elapsed = time.perf_counter() - start_time
             return {
                 "status": "error",
                 "counterexamples": [],
                 "paths_explored": 0,
                 "paths_verified": 0,
-                "time_seconds": round(elapsed, 4),
+                "time_seconds": round(time.perf_counter() - start_time, 4),
                 "coverage_estimate": 0.0,
                 "error_type": type(e).__name__,
                 "message": str(e),

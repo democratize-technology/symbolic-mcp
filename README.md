@@ -113,8 +113,8 @@ The server provides these MCP tools:
 **Defense-in-depth isolation:**
 - **Import filtering**: Whitelist-only access to 21 vetted modules
 - **Resource limits**: 2GB memory cap prevents DoS attacks
-- **Process isolation**: Each analysis runs in sandboxed context
-- **Input validation**: All user code undergoes security validation
+- **Process isolation**: Each analysis runs in an ephemeral subprocess
+- **Input validation**: AST-based static analysis blocks dangerous builtins and introspection
 - **Timeout protection**: Configurable execution timeouts
 
 **Allowed modules for symbolic execution:**
@@ -319,7 +319,7 @@ pytest --cov=main --cov-report=html
 | Code injection | Import whitelist | 21 vetted modules only |
 | Memory exhaustion | Resource limits | 2GB hard limit |
 | Path explosion | Timeouts + heuristics | Configurable timeouts |
-| System access | Process isolation | RestrictedPython wrapper |
+| System access | Process isolation | Ephemeral subprocess + AST validation |
 | Information leakage | Output sanitization | Error message filtering |
 
 ### Security Assumptions
@@ -415,7 +415,6 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - **crosshair-tool>=0.0.70** - Symbolic execution engine
 - **z3-solver>=4.12.0** - SMT solver backend
 - **icontract>=2.6.0** - Design by contracts
-- **RestrictedPython>=8.1** - Code sandboxing
 
 ### Development Dependencies
 
