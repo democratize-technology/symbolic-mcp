@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 version = "0.1.0"
 name = "symbolic-mcp"
-description = "Production-ready symbolic execution server for the Model Context Protocol (MCP)"
+description = "Symbolic execution server for the Model Context Protocol (MCP)"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
@@ -29,7 +29,7 @@ keywords = [
     "fastmcp"
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
