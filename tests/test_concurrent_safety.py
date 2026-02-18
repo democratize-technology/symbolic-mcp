@@ -10,31 +10,11 @@ would be difficult to reproduce in normal operation.
 
 import sys
 import threading
-from collections.abc import Callable
-from typing import Protocol, TypeVar
-
-import pytest
 
 # Import the module under test
 import main
 from main import _FunctionComparisonResult, _SymbolicCheckResult
-
-# TypeVar for concurrent test results - matches conftest.T
-T = TypeVar("T")
-
-
-# Protocol for the run_concurrent_test fixture - matches conftest.ConcurrentTestFunc
-# NOTE: This Protocol is duplicated here (instead of imported from conftest) because:
-# 1. mypy requires Protocol definitions to be visible at type-check time
-# 2. conftest.py is a special pytest file that doesn't export types cleanly
-# 3. Importing from conftest can cause circular import issues during test collection
-# Keep this definition synchronized with conftest.ConcurrentTestFunc
-class ConcurrentTestFunc(Protocol):
-    def __call__(
-        self,
-        operation: Callable[[int], T],
-        num_threads: int = 50,
-    ) -> tuple[list[Exception], list[T]]: ...
+from tests.types import ConcurrentTestFunc
 
 
 class TestSysModulesConcurrency:

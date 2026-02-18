@@ -5,24 +5,15 @@ Shared pytest configuration and fixtures for all tests.
 import os
 import sys
 from collections.abc import Callable
-from typing import Generator, Protocol, TypeVar
+from typing import TYPE_CHECKING, Generator
 
 import pytest
 from _pytest.config import Config
 
-# TypeVar for the result type of concurrent test operations
-T = TypeVar("T")
+from tests.types import ConcurrentTestFunc, T
 
-
-# Type alias for the run_concurrent_test fixture return value
-class ConcurrentTestFunc(Protocol):
-    """Protocol for the concurrent test runner function."""
-
-    def __call__(
-        self,
-        operation: Callable[[int], T],
-        num_threads: int = 50,
-    ) -> tuple[list[Exception], list[T]]: ...
+if TYPE_CHECKING:
+    pass  # Imports for type checking only
 
 
 # Test constants

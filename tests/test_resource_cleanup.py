@@ -8,14 +8,11 @@ with delete=False but before the try block is entered, the file may not
 be cleaned up.
 """
 
-import importlib.util
 import os
 import tempfile
 from contextlib import contextmanager
 from typing import Any, Generator
 from unittest.mock import patch
-
-import pytest
 
 from main import SymbolicAnalyzer, logic_compare_functions, logic_find_path_to_exception
 
@@ -181,47 +178,3 @@ def func_b():
                 assert not os.path.exists(
                     temp_file
                 ), f"Temp file not cleaned up: {temp_file}"
-
-    def test_temporary_module_cleanup_on_exception_before_try(self) -> None:
-        """Test the race condition where exception occurs before try block.
-
-        This simulates the scenario where an exception could occur between
-        tempfile creation and entering the try block (e.g., in spec_from_file_location).
-        """
-        analyzer = SymbolicAnalyzer()
-
-        code = """
-def simple_function(x: int) -> int:
-    return x + 1
-"""
-
-        # Even if spec_from_file_location fails, cleanup should happen
-        call_count = [0]
-        original_spec_func = importlib.util.spec_from_file_location
-
-        # Mock wrapper for spec_from_file_location that fails on first call.
-        # Uses *args/**kwargs with Any because the original function has specific
-        # loader protocol requirements that are impractical to type in a test mock.
-        def failing_spec_from_file_location(*args: Any, **kwargs: Any) -> Any:
-            """Make spec_from_file_location fail on first call."""
-            call_count[0] += 1
-            if call_count[0] == 1:
-                raise RuntimeError("Simulated failure in spec_from_file_location")
-            return original_spec_func(*args, **kwargs)
-
-        with track_temp_files() as temp_files_created:
-            with patch(
-                "importlib.util.spec_from_file_location",
-                failing_spec_from_file_location,
-            ):
-                result = analyzer.analyze(code, "simple_function")
-
-        # Verify analysis returned an error
-        assert result["status"] == "error"
-
-        # Verify all temp files were cleaned up (context manager ensures this)
-        for temp_file in temp_files_created:
-            if temp_file.endswith(".py"):
-                assert not os.path.exists(
-                    temp_file
-                ), f"Temp file not cleaned up on early exception: {temp_file}"

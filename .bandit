@@ -1,17 +1,12 @@
-# =============================================================================
-# Symbolic MCP - Bandit Configuration
-# Security-focused symbolic execution MCP server
-# =============================================================================
-
 [bandit]
-# Exclude directories from security scanning
-exclude = tests/,build/,dist/,docs/,.git/,__pycache__/,.pytest_cache/,.tox/,.venv/
+# Bandit configuration for symbolic-mcp
+# Security-focused symbolic execution MCP server
 
-# Tests to skip (legitimate usage for symbolic execution)
-# B101: assert_used (we use assertions in tests and defensive programming)
-# B601: shell_injection_process (controlled usage in symbolic execution)
-# B602: shell_injection_subprocess (controlled usage in symbolic execution)
-# B603: subprocess_without_shell_equals_true (controlled usage)
-# B401: import_subprocess (subprocess is used legitimately)
-# B404: import_pickle (pickle is used in some contexts legitimately)
-skips = B101,B601,B602,B603,B401,B404
+# Exclude directories from security scanning
+exclude = /tests/,/build/,/dist/,/docs/,/\.git/,/__pycache__/,/\.pytest_cache/,/\.tox/,/\.venv/,/venv/
+
+# Tests to skip globally
+# B101: assert_used (pytest uses assertions for test validation)
+# B605: start_process_with_a_shell (dev script uses shell=True with controlled input)
+# B607: start_process_with_partial_path (dev script runs known commands)
+skips = B101,B605,B607

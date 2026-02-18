@@ -5,13 +5,11 @@ configured when environment variables are set, and falls back to stdio
 transport when they are not.
 """
 
-import os
-
 import pytest
 from fastmcp import FastMCP
 from pytest import MonkeyPatch
 
-from main import _get_github_auth, mcp
+from main import _get_github_auth
 
 
 class TestOAuthConfiguration:

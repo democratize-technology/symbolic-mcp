@@ -4,8 +4,6 @@ This module provides unit tests for the _parse_function_args function and the
 health_check tool to improve code coverage.
 """
 
-import pytest
-
 from main import _parse_function_args, logic_health_check
 
 

@@ -6,8 +6,7 @@ This script sets up the development environment for symbolic-mcp
 including version management, pre-commit hooks, and development tools.
 """
 
-import os
-import subprocess
+import subprocess  # nosec B404  # Dev utility script, subprocess is needed
 import sys
 from pathlib import Path
 
@@ -17,7 +16,11 @@ def run_command(cmd: str, description: str, check: bool = True) -> bool:
     print(f"🔧 {description}...")
     try:
         result = subprocess.run(
-            cmd, shell=True, check=check, capture_output=True, text=True
+            cmd,
+            shell=True,  # nosec B602  # Dev utility with controlled input
+            check=check,
+            capture_output=True,
+            text=True,
         )
         if result.stdout.strip():
             print(f"   {result.stdout.strip()}")
@@ -113,7 +116,7 @@ def validate_configuration() -> bool:
         )
         has_config = "[tool.setuptools_scm]" in content
 
-        print(f"   📋 pyproject.toml found")
+        print("   📋 pyproject.toml found")
         print(f"   📦 setuptools-scm configured: {has_scm}")
         print(f"   🔄 Dynamic version enabled: {has_dynamic}")
         print(f"   ⚙️  SCM config section: {has_config}")

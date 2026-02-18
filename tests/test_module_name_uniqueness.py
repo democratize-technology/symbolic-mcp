@@ -21,7 +21,7 @@ class TestModuleNameUniqueness:
         module_names = []
 
         for _ in range(num_iterations):
-            with _temporary_module(code) as module:
+            with _temporary_module(code):
                 # Capture module name while context is active
                 for name in sys.modules:
                     if name.startswith("mcp_temp_") and name not in module_names:
@@ -65,7 +65,7 @@ class TestModuleNameUniqueness:
             name for name in sys.modules.keys() if name.startswith("mcp_temp_")
         )
 
-        with _temporary_module(code) as module:
+        with _temporary_module(code):
             temp_modules_during = set(
                 name for name in sys.modules.keys() if name.startswith("mcp_temp_")
             )

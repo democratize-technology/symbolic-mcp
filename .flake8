@@ -9,16 +9,14 @@
 # Maximum line length (aligned with Black formatting)
 max-line-length = 88
 
-# Error codes to ignore (no inline comments - flake8 7.x incompatible)
+# Error codes to ignore globally
 # E203: whitespace before ':' (conflicts with Black)
 # W503/W504: line break before/after binary operator (conflicts with Black)
-# F401: imported but unused (handled by isort)
-# F403/F405: star import (sometimes needed for symbolic execution)
-# E741: ambiguous variable name
-# E501: line too long (handled by Black)
-# E722: bare except (sometimes needed in symbolic execution)
-# C901: too complex (handled by other tools)
-extend-ignore = E203, W503, W504, F401, F403, F405, E741, E501, E722, C901, E701
+# E741: ambiguous variable name (sometimes needed for mathematical notation)
+# E501: line too long (handled by Black formatting)
+# C901: too complex (complexity handled case-by-case with inline noqa)
+# E701: multiple statements on one line (colon) - style preference
+extend-ignore = E203, W503, W504, E741, E501, C901, E701
 
 # Directories to exclude
 exclude =
@@ -37,14 +35,12 @@ exclude =
     docs/_build,
     site
 
-# Per-file ignores
-# Pre-existing issues to address in future refactoring
+# Per-file ignores - minimal set for legitimate cases
+# E501: Line length - Black handles formatting
+# C901: Complexity - some functions are inherently complex
 per-file-ignores =
-    test_*.py:F401,F811,E722,F841,E402,E501
-    tests/*:F401,F811,E722,F841,E402,E501
-    main.py:E501,E722,F401,F811,F841,C901,E402
-    scripts/*.py:E501,F401,F541,C901,E402
-    conftest.py:F401,F811,E402,E501
+    main.py:C901
+    scripts/*.py:E501,C901
 
 # Maximum complexity
 max-complexity = 10

@@ -8,6 +8,8 @@ NOTE: These tests do NOT require CrossHair mocking. The validate_code function
 and BLOCKED_MODULES constant have no CrossHair dependencies.
 """
 
+import pytest
+
 from main import validate_code
 
 
@@ -83,9 +85,6 @@ class TestMalformedImportStatements:
         code = "from math \\\n    import sqrt\ndef bar(): return sqrt(4)"
         result = validate_code(code)
         assert result["valid"] is True
-
-
-import pytest
 
 
 class TestBlockedModulesWithEdgeCases:
