@@ -12,7 +12,7 @@ import importlib.util
 import os
 import tempfile
 from contextlib import contextmanager
-from typing import Any, Generator, List
+from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
@@ -21,13 +21,13 @@ from main import SymbolicAnalyzer, logic_compare_functions, logic_find_path_to_e
 
 
 @contextmanager
-def track_temp_files() -> Generator[List[str], None, None]:
+def track_temp_files() -> Generator[list[str], None, None]:
     """Context manager to track temporary files created during a test.
 
     Patches tempfile.NamedTemporaryFile to track all created files.
     Yields a list that will be populated with the paths of created temp files.
     """
-    created: List[str] = []
+    created: list[str] = []
     original = tempfile.NamedTemporaryFile
 
     # The tracker wraps tempfile.NamedTemporaryFile to record file paths.

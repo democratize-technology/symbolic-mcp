@@ -4,7 +4,42 @@ This module verifies that MCP resources and prompts are properly
 registered and accessible.
 """
 
+from collections.abc import Callable
+from typing import Any, Protocol, runtime_checkable
+
 from main import mcp
+
+# --- Type-safe helpers for FastMCP internal access ---
+
+
+@runtime_checkable
+class _HasCallableFn(Protocol):
+    """Protocol for objects with a callable fn attribute.
+
+    FastMCP's FunctionResource and FunctionPrompt have a 'fn' attribute
+    that holds the underlying callable, but this isn't exposed in their
+    type stubs. This protocol provides type-safe access for tests.
+    """
+
+    fn: Callable[..., Any]
+
+
+def _get_mcp_resource_fn(mcp_instance: Any, uri: str) -> Callable[..., Any]:
+    """Type-safe accessor for MCP resource function."""
+    resource = mcp_instance._resource_manager._resources.get(uri)
+    assert resource is not None, f"Resource {uri} not found"
+    assert isinstance(
+        resource, _HasCallableFn
+    ), f"Resource {uri} should have fn attribute"
+    return resource.fn
+
+
+def _get_mcp_prompt_fn(mcp_instance: Any, name: str) -> Callable[..., Any]:
+    """Type-safe accessor for MCP prompt function."""
+    prompt = mcp_instance._prompt_manager._prompts.get(name)
+    assert prompt is not None, f"Prompt {name} not found"
+    assert isinstance(prompt, _HasCallableFn), f"Prompt {name} should have fn attribute"
+    return prompt.fn
 
 
 class TestResources:
@@ -34,9 +69,8 @@ class TestResources:
         When: The resource function is called
         Then: It returns a dict with correct allowed/blocked modules
         """
-        resource = mcp._resource_manager._resources["config://security"]
-        assert callable(resource.fn), "Resource should be callable"  # type: ignore[attr-defined]
-        result = resource.fn()  # type: ignore[attr-defined]
+        resource_fn = _get_mcp_resource_fn(mcp, "config://security")
+        result = resource_fn()
 
         assert isinstance(result, dict), "Security resource should return dict"
         assert "allowed_modules" in result
@@ -56,9 +90,8 @@ class TestResources:
         When: The resource function is called
         Then: It returns a dict with server configuration
         """
-        resource = mcp._resource_manager._resources["config://server"]
-        assert callable(resource.fn), "Resource should be callable"  # type: ignore[attr-defined]
-        result = resource.fn()  # type: ignore[attr-defined]
+        resource_fn = _get_mcp_resource_fn(mcp, "config://server")
+        result = resource_fn()
 
         assert isinstance(result, dict), "Server resource should return dict"
         assert "version" in result
@@ -79,9 +112,8 @@ class TestResources:
         When: The resource function is called
         Then: It returns a dict with correct tool and resource counts
         """
-        resource = mcp._resource_manager._resources["info://capabilities"]
-        assert callable(resource.fn), "Resource should be callable"  # type: ignore[attr-defined]
-        result = resource.fn()  # type: ignore[attr-defined]
+        resource_fn = _get_mcp_resource_fn(mcp, "info://capabilities")
+        result = resource_fn()
 
         assert isinstance(result, dict), "Capabilities resource should return dict"
         assert "tools" in result
@@ -131,9 +163,8 @@ class TestPrompts:
         Then: It returns a string
         """
         for name in mcp._prompt_manager._prompts.keys():
-            prompt = mcp._prompt_manager._prompts[name]
-            assert callable(prompt.fn), f"Prompt {name} should be callable"  # type: ignore[attr-defined]
-            result = prompt.fn()  # type: ignore[attr-defined]
+            prompt_fn = _get_mcp_prompt_fn(mcp, name)
+            result = prompt_fn()
             assert isinstance(result, str), f"Prompt {name} should return str"
 
     def test_prompt_contains_placeholders(self) -> None:
@@ -143,9 +174,8 @@ class TestPrompts:
         When: The prompt function is called
         Then: It contains {{code}} and {{function_name}} placeholders
         """
-        prompt = mcp._prompt_manager._prompts["symbolic_check_template"]
-        assert callable(prompt.fn), "Prompt should be callable"  # type: ignore[attr-defined]
-        symbolic_check = prompt.fn()  # type: ignore[attr-defined]
+        prompt_fn = _get_mcp_prompt_fn(mcp, "symbolic_check_template")
+        symbolic_check = prompt_fn()
         assert "{{code}}" in symbolic_check
         assert "{{function_name}}" in symbolic_check
 
@@ -172,8 +202,8 @@ class TestPrompts:
         }
 
         for prompt_name, required_placeholders in prompt_requirements.items():
-            prompt = mcp._prompt_manager._prompts[prompt_name]
-            result = prompt.fn()  # type: ignore[attr-defined]
+            prompt_fn = _get_mcp_prompt_fn(mcp, prompt_name)
+            result = prompt_fn()
             for placeholder in required_placeholders:
                 assert (
                     placeholder in result
