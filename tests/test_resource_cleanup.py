@@ -30,6 +30,10 @@ def track_temp_files() -> Generator[List[str], None, None]:
     created: List[str] = []
     original = tempfile.NamedTemporaryFile
 
+    # The tracker wraps tempfile.NamedTemporaryFile to record file paths.
+    # We use *args/**kwargs with Any because tempfile.NamedTemporaryFile has
+    # complex overloads with Literal types that are impractical to replicate.
+    # The wrapper delegates to the original function, preserving its type safety.
     def tracker(*args: Any, **kwargs: Any) -> Any:
         result = original(*args, **kwargs)
         created.append(result.name)
@@ -193,13 +197,17 @@ def simple_function(x: int) -> int:
 
         # Even if spec_from_file_location fails, cleanup should happen
         call_count = [0]
+        original_spec_func = importlib.util.spec_from_file_location
 
+        # Mock wrapper for spec_from_file_location that fails on first call.
+        # Uses *args/**kwargs with Any because the original function has specific
+        # loader protocol requirements that are impractical to type in a test mock.
         def failing_spec_from_file_location(*args: Any, **kwargs: Any) -> Any:
             """Make spec_from_file_location fail on first call."""
             call_count[0] += 1
             if call_count[0] == 1:
                 raise RuntimeError("Simulated failure in spec_from_file_location")
-            return importlib.util.spec_from_file_location(*args, **kwargs)
+            return original_spec_func(*args, **kwargs)
 
         with track_temp_files() as temp_files_created:
             with patch(
