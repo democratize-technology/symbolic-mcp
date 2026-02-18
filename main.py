@@ -407,13 +407,21 @@ def _parse_function_args(args_str: str) -> list[str]:
         char = args_str[i]
 
         # Handle string literals
-        if char in ('"', "'") and (i == 0 or args_str[i - 1] != "\\"):
-            if not in_string:
-                in_string = True
-                string_char = char
-            elif char == string_char:
-                in_string = False
-                string_char = None
+        if char in ('"', "'"):
+            # Check if quote is escaped by odd number of backslashes
+            is_escaped = False
+            j = i - 1
+            while j >= 0 and args_str[j] == "\\":
+                is_escaped = not is_escaped
+                j -= 1
+
+            if not is_escaped:
+                if not in_string:
+                    in_string = True
+                    string_char = char
+                elif char == string_char:
+                    in_string = False
+                    string_char = None
             current.append(char)
         # Inside string, just append
         elif in_string:
@@ -1661,16 +1669,8 @@ def analyze_branches(
     )
 
 
-@mcp.tool(
-    annotations=ToolAnnotations(
-        title="Server Health Check",
-        readOnlyHint=True,  # Read-only server status
-        idempotentHint=True,  # Same results on repeated calls
-        destructiveHint=False,
-    )
-)
-def health_check() -> _HealthCheckResult:
-    """Health check for the Symbolic Execution MCP server.
+def logic_health_check() -> _HealthCheckResult:
+    """Health check for the Symbolic Execution MCP server logic.
 
     Returns server status, version information, and resource usage.
     """
@@ -1707,6 +1707,22 @@ def health_check() -> _HealthCheckResult:
         "platform": platform.platform(),
         "memory_usage_mb": round(psutil.Process().memory_info().rss / 1024 / 1024, 2),
     }
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Server Health Check",
+        readOnlyHint=True,  # Read-only server status
+        idempotentHint=True,  # Same results on repeated calls
+        destructiveHint=False,
+    )
+)
+def health_check() -> _HealthCheckResult:
+    """Health check for the Symbolic Execution MCP server.
+
+    Returns server status, version information, and resource usage.
+    """
+    return logic_health_check()
 
 
 @mcp.resource("config://security")
