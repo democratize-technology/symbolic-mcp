@@ -10,7 +10,8 @@ would be difficult to reproduce in normal operation.
 
 import sys
 import threading
-from typing import Any
+from collections.abc import Callable
+from typing import Any, Protocol
 
 import pytest
 
@@ -19,11 +20,20 @@ import main
 from main import _FunctionComparisonResult, _SymbolicCheckResult
 
 
+# Protocol for the run_concurrent_test fixture - matches conftest.ConcurrentTestFunc
+class ConcurrentTestFunc(Protocol):
+    def __call__(
+        self,
+        operation: Callable[[int], Any],
+        num_threads: int = 50,
+    ) -> tuple[list[Exception], list[Any]]: ...
+
+
 class TestSysModulesConcurrency:
     """Test thread safety of sys.modules access in _temporary_module."""
 
     def test_concurrent_temp_module_creation_no_exceptions(
-        self, run_concurrent_test: Any
+        self, run_concurrent_test: ConcurrentTestFunc
     ) -> None:
         """Concurrent calls to _temporary_module should not raise exceptions.
 
@@ -59,7 +69,7 @@ def add(a: int, b: int) -> int:
 
     def test_concurrent_symbolic_check(
         self,
-        run_concurrent_test: Any,
+        run_concurrent_test: ConcurrentTestFunc,
     ) -> None:
         """Concurrent symbolic_check calls should not raise exceptions.
 
@@ -146,7 +156,7 @@ def multiply(x: int, y: int) -> int:
 
     def test_no_module_leak_after_concurrent_use(
         self,
-        run_concurrent_test: Any,
+        run_concurrent_test: ConcurrentTestFunc,
     ) -> None:
         """Verify that temporary modules are cleaned up after concurrent use.
 
@@ -187,7 +197,7 @@ def dummy(x: int) -> int:
 
     def test_concurrent_with_exception_in_module_body(
         self,
-        run_concurrent_test: Any,
+        run_concurrent_test: ConcurrentTestFunc,
     ) -> None:
         """Concurrent calls with exceptions in module code should still clean up.
 
@@ -225,7 +235,7 @@ def broken():
 
     def test_concurrent_compare_functions(
         self,
-        run_concurrent_test: Any,
+        run_concurrent_test: ConcurrentTestFunc,
     ) -> None:
         """Test concurrent compare_functions for race conditions.
 
@@ -268,7 +278,7 @@ def add_one_v2(x: int) -> int:
 
     def test_concurrent_find_path_to_exception(
         self,
-        run_concurrent_test: Any,
+        run_concurrent_test: ConcurrentTestFunc,
     ) -> None:
         """Test concurrent find_path_to_exception for race conditions."""
         code = """

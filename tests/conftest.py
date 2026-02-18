@@ -5,10 +5,22 @@ Shared pytest configuration and fixtures for all tests.
 import os
 import sys
 from collections.abc import Callable
-from typing import Any, Generator
+from typing import Any, Generator, Protocol
 
 import pytest
 from _pytest.config import Config
+
+
+# Type alias for the run_concurrent_test fixture return value
+class ConcurrentTestFunc(Protocol):
+    """Protocol for the concurrent test runner function."""
+
+    def __call__(
+        self,
+        operation: Callable[[int], Any],
+        num_threads: int = 50,
+    ) -> tuple[list[Exception], list[Any]]: ...
+
 
 # Test constants
 CONCURRENT_TEST_THREAD_COUNT = 50  # Enough to expose race conditions
@@ -73,7 +85,7 @@ def clean_sys_modules_snapshot() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def run_concurrent_test() -> Any:
+def run_concurrent_test() -> ConcurrentTestFunc:
     """Fixture providing standardized concurrent test execution.
 
     Returns:
