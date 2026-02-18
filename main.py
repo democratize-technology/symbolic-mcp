@@ -852,7 +852,7 @@ def _temporary_module(code: str) -> Generator[types.ModuleType, None, None]:
 class SymbolicAnalyzer:
     """Analyzes code using CrossHair symbolic execution."""
 
-    def __init__(self, timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS):
+    def __init__(self, timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS) -> None:
         self.timeout = timeout_seconds
 
     # Use the module-level context manager for consistency
