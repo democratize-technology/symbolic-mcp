@@ -181,7 +181,6 @@ strict_equality = true
 module = [
     "crosshair.*",
     "z3.*",
-    "crosshair_tool.*",
     "psutil"
 ]
 ignore_missing_imports = true
