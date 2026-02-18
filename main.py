@@ -1695,7 +1695,10 @@ def find_path_to_exception(
     )
 )
 def compare_functions(
-    code: str, function_a: str, function_b: str, timeout_seconds: int = 60
+    code: str,
+    function_a: str,
+    function_b: str,
+    timeout_seconds: int = DEFAULT_ANALYSIS_TIMEOUT_SECONDS,
 ) -> _FunctionComparisonResult:
     """Check if two functions are semantically equivalent."""
     return logic_compare_functions(code, function_a, function_b, timeout_seconds)
