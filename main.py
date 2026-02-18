@@ -1885,5 +1885,10 @@ Use the `analyze_branches` tool with appropriate timeout.
 """
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the symbolic-mcp CLI command."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
