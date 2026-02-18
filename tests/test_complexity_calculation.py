@@ -21,65 +21,34 @@ import pytest
 
 from main import logic_analyze_branches as analyze_branches
 
-
-class TestCyclomaticComplexity:
-    """Test cyclomatic complexity calculation."""
-
-    def test_simple_function_complexity(self) -> None:
-        """Function with no decision points should have complexity 1."""
-        code = """
+# Test cases for cyclomatic complexity
+# Format: (code, function_name, expected_complexity, description)
+COMPLEXITY_CASES = [
+    # Simple function with no decision points
+    (
+        """
 def simple_function(x: int) -> int:
     return x + 1
-"""
-        result = analyze_branches(
-            code=code, function_name="simple_function", timeout_seconds=10
-        )
-
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 1
-        ), f"Expected complexity 1, got {result['cyclomatic_complexity']}"
-
-    def test_single_if_complexity(self) -> None:
-        """Single if statement: complexity = 1 (base) + 1 (if) = 2."""
-        code = """
+""",
+        "simple_function",
+        1,
+        "function with no decision points should have complexity 1",
+    ),
+    # Single if statement
+    (
+        """
 def single_if(x: int) -> int:
     if x > 0:
         return 1
     return 0
-"""
-        result = analyze_branches(
-            code=code, function_name="single_if", timeout_seconds=10
-        )
-
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 2
-        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
-
-    def test_if_elif_chain_complexity(self) -> None:
+""",
+        "single_if",
+        2,
+        "single if statement: complexity = 1 (base) + 1 (if) = 2",
+    ),
+    # if/elif chain - THIS EXPOSES THE BUG
+    (
         """
-        Test if/elif chain - THIS EXPOSES THE BUG.
-
-        Code: if a: elif b: elif c: else:
-
-        AST structure:
-        - If node (main if)
-          - orelse contains: [If (elif b), If (elif c)]
-
-        Decision points:
-        1. if a
-        2. elif b (first elif)
-        3. elif c (second elif)
-
-        Correct complexity = 1 (base) + 3 (decision points) = 4
-
-        BUGGY behavior:
-        - ast.walk() finds main If -> +1 (complexity=2)
-        - Explicit elif count -> +2 (complexity=4)
-        - ast.walk() also visits elif If nodes -> +2 (complexity=6) <- BUG
-        """
-        code = """
 def if_elif_chain(x: int) -> int:
     if x > 10:
         return 1
@@ -89,121 +58,79 @@ def if_elif_chain(x: int) -> int:
         return 3
     else:
         return 0
-"""
-        result = analyze_branches(
-            code=code, function_name="if_elif_chain", timeout_seconds=10
-        )
-
-        # Correct complexity: 1 (base) + 3 (if + 2 elifs) = 4
-        # Buggy implementation would return 6
-        assert result["status"] == "complete"
-        assert result["cyclomatic_complexity"] == 4, (
-            f"BUG: Expected complexity 4, got {result['cyclomatic_complexity']}. "
-            f"This indicates elif branches are being double-counted by ast.walk()"
-        )
-
-    def test_nested_if_complexity(self) -> None:
-        """Nested if statements should count each level."""
-        code = """
+""",
+        "if_elif_chain",
+        4,
+        "if/elif chain: 1 (base) + 3 (if + 2 elifs) = 4, buggy would return 6",
+    ),
+    # Nested if statements
+    (
+        """
 def nested_if(x: int, y: int) -> int:
     if x > 0:
         if y > 0:
             return 1
         return 2
     return 0
-"""
-        result = analyze_branches(
-            code=code, function_name="nested_if", timeout_seconds=10
-        )
-
-        # Complexity = 1 (base) + 2 (two if statements) = 3
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 3
-        ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
-
-    def test_while_loop_complexity(self) -> None:
-        """While loop adds one decision point."""
-        code = """
+""",
+        "nested_if",
+        3,
+        "nested if statements: 1 (base) + 2 (two if statements) = 3",
+    ),
+    # While loop
+    (
+        """
 def while_loop(n: int) -> int:
     total = 0
     while n > 0:
         total += n
         n -= 1
     return total
-"""
-        result = analyze_branches(
-            code=code, function_name="while_loop", timeout_seconds=10
-        )
-
-        # Complexity = 1 (base) + 1 (while) = 2
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 2
-        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
-
-    def test_for_loop_complexity(self) -> None:
-        """For loop adds one decision point."""
-        code = """
+""",
+        "while_loop",
+        2,
+        "while loop adds one decision point: 1 (base) + 1 (while) = 2",
+    ),
+    # For loop
+    (
+        """
 def for_loop(items: list) -> int:
     total = 0
     for item in items:
         total += item
     return total
-"""
-        result = analyze_branches(
-            code=code, function_name="for_loop", timeout_seconds=10
-        )
-
-        # Complexity = 1 (base) + 1 (for) = 2
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 2
-        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
-
-    def test_boolop_and_complexity(self) -> None:
+""",
+        "for_loop",
+        2,
+        "for loop adds one decision point: 1 (base) + 1 (for) = 2",
+    ),
+    # BoolOp with 'and' (3 values -> +2 complexity)
+    (
         """
-        BoolOp with 'and' adds complexity for each additional operand.
-
-        For 'a and b and c': 3 values -> +2 complexity
-        """
-        code = """
 def boolop_and(x: int, y: int, z: int) -> bool:
     if x > 0 and y > 0 and z > 0:
         return True
     return False
-"""
-        result = analyze_branches(
-            code=code, function_name="boolop_and", timeout_seconds=10
-        )
-
-        # Complexity = 1 (base) + 1 (if) + 2 (BoolOp with 3 values has 2 additional operands) = 4
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 4
-        ), f"Expected complexity 4, got {result['cyclomatic_complexity']}"
-
-    def test_boolop_or_complexity(self) -> None:
-        """BoolOp with 'or' adds complexity for each additional operand."""
-        code = """
+""",
+        "boolop_and",
+        4,
+        "BoolOp 'and': 1 (base) + 1 (if) + 2 (BoolOp 3 values) = 4",
+    ),
+    # BoolOp with 'or' (2 values -> +1 complexity)
+    (
+        """
 def boolop_or(x: int, y: int) -> bool:
     if x < 0 or x > 100:
         return True
     return False
-"""
-        result = analyze_branches(
-            code=code, function_name="boolop_or", timeout_seconds=10
-        )
-
-        # Complexity = 1 (base) + 1 (if) + 1 (BoolOp with 2 values has 1 additional operand) = 3
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 3
-        ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
-
-    def test_complex_function_complexity(self) -> None:
-        """Complex function with multiple decision point types."""
-        code = """
+""",
+        "boolop_or",
+        3,
+        "BoolOp 'or': 1 (base) + 1 (if) + 1 (BoolOp 2 values) = 3",
+    ),
+    # Complex function with multiple decision point types
+    (
+        """
 def complex_function(items: list, x: int) -> int:
     total = 0
     for item in items:
@@ -220,82 +147,101 @@ def complex_function(items: list, x: int) -> int:
         return total
 
     return total
-"""
-        result = analyze_branches(
-            code=code, function_name="complex_function", timeout_seconds=10
-        )
-
-        # Decision points:
-        # - 1 for loop
-        # - 1 if (item > 0)
-        # - 1 elif (item < 0)
-        # - 1 while loop
-        # - 1 if (x > 10 or x < -10)
-        # - 1 BoolOp (2 values, 1 additional operand)
-        # Total: 1 (base) + 6 = 7
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 7
-        ), f"Expected complexity 7, got {result['cyclomatic_complexity']}"
-
-    def test_elif_without_else_complexity(self) -> None:
-        """if/elif chain without else."""
-        code = """
+""",
+        "complex_function",
+        7,
+        "complex: 1 (base) + 1 (for) + 1 (if) + 1 (elif) + 1 (while) + 1 (if) + 1 (BoolOp) = 7",
+    ),
+    # if/elif without else
+    (
+        """
 def if_elif_no_else(x: int) -> int:
     if x > 10:
         return 1
     elif x > 5:
         return 2
     return 0
-"""
-        result = analyze_branches(
-            code=code, function_name="if_elif_no_else", timeout_seconds=10
-        )
-
-        # Complexity = 1 (base) + 2 (if + 1 elif) = 3
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 3
-        ), f"Expected complexity 3, got {result['cyclomatic_complexity']}"
-
-    def test_multiple_boolops_in_if(self) -> None:
-        """Multiple BoolOps should each add complexity."""
-        code = """
+""",
+        "if_elif_no_else",
+        3,
+        "if/elif no else: 1 (base) + 2 (if + 1 elif) = 3",
+    ),
+    # Multiple BoolOps
+    (
+        """
 def multiple_boolops(x: int, y: int, z: int) -> bool:
     if x > 0 and y > 0:
         if z < 0 or z > 100:
             return True
     return False
-"""
-        result = analyze_branches(
-            code=code, function_name="multiple_boolops", timeout_seconds=10
-        )
-
-        # Decision points:
-        # - 2 if statements
-        # - 1 BoolOp (x and y) -> 1 additional operand
-        # - 1 BoolOp (z or z) -> 1 additional operand
-        # Total: 1 (base) + 4 = 5
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 5
-        ), f"Expected complexity 5, got {result['cyclomatic_complexity']}"
-
-    def test_if_with_else_no_elif(self) -> None:
-        """Simple if/else without elif."""
-        code = """
+""",
+        "multiple_boolops",
+        5,
+        "multiple BoolOps: 1 (base) + 2 (if) + 1 (and) + 1 (or) = 5",
+    ),
+    # Simple if/else without elif
+    (
+        """
 def if_else(x: int) -> int:
     if x > 0:
         return 1
     else:
         return 0
-"""
-        result = analyze_branches(
-            code=code, function_name="if_else", timeout_seconds=10
-        )
+""",
+        "if_else",
+        2,
+        "if/else: 1 (base) + 1 (if) = 2 (else doesn't add complexity)",
+    ),
+]
 
-        # Complexity = 1 (base) + 1 (if) = 2 (else doesn't add complexity)
-        assert result["status"] == "complete"
-        assert (
-            result["cyclomatic_complexity"] == 2
-        ), f"Expected complexity 2, got {result['cyclomatic_complexity']}"
+
+@pytest.mark.parametrize("code,func_name,expected,description", COMPLEXITY_CASES)
+def test_cyclomatic_complexity(
+    code: str, func_name: str, expected: int, description: str
+) -> None:
+    """Test cyclomatic complexity calculation for various code patterns.
+
+    Given: Code with a function having a known cyclomatic complexity
+    When: analyze_branches is called with the function
+    Then: The result contains the correct cyclomatic complexity
+    """
+    result = analyze_branches(code=code, function_name=func_name, timeout_seconds=10)
+
+    assert result["status"] == "complete"
+    assert (
+        result["cyclomatic_complexity"] == expected
+    ), f"{description}. Expected complexity {expected}, got {result['cyclomatic_complexity']}"
+
+
+def test_if_elif_chain_no_double_counting() -> None:
+    """Test if/elif chain specifically to detect double-counting bug.
+
+    This test explicitly validates that elif branches are not double-counted
+    by ast.walk() when the code also explicitly counts them.
+
+    Given: Code with if/elif/elif/else structure
+    When: analyze_branches is called
+    Then: Complexity is 4, not 6 (which would indicate double-counting)
+    """
+    code = """
+def if_elif_chain(x: int) -> int:
+    if x > 10:
+        return 1
+    elif x > 5:
+        return 2
+    elif x > 0:
+        return 3
+    else:
+        return 0
+"""
+    result = analyze_branches(
+        code=code, function_name="if_elif_chain", timeout_seconds=10
+    )
+
+    # Correct complexity: 1 (base) + 3 (if + 2 elifs) = 4
+    # Buggy implementation would return 6
+    assert result["status"] == "complete"
+    assert result["cyclomatic_complexity"] == 4, (
+        f"BUG: Expected complexity 4, got {result['cyclomatic_complexity']}. "
+        f"This indicates elif branches are being double-counted by ast.walk()"
+    )

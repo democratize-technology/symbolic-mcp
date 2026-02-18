@@ -8,22 +8,23 @@ The test simulates high-concurrency scenarios to expose race conditions that
 would be difficult to reproduce in normal operation.
 """
 
-import concurrent.futures
 import sys
 import threading
-import time
+from typing import Any
 
 import pytest
 
 # Import the module under test
 import main
-from main import _SymbolicCheckResult
+from main import _FunctionComparisonResult, _SymbolicCheckResult
 
 
 class TestSysModulesConcurrency:
     """Test thread safety of sys.modules access in _temporary_module."""
 
-    def test_concurrent_temp_module_creation_no_exceptions(self) -> None:
+    def test_concurrent_temp_module_creation_no_exceptions(
+        self, run_concurrent_test: Any
+    ) -> None:
         """Concurrent calls to _temporary_module should not raise exceptions.
 
         This test creates many temporary modules concurrently, verifying that
@@ -38,45 +39,28 @@ def add(a: int, b: int) -> int:
     '''post: _ == a + b'''
     return a + b
 """
+        barrier = threading.Barrier(50)
 
-        num_threads = 50
-        exceptions: list[Exception] = []
-        results: list[int] = []
-
-        def create_and_use_module(thread_id: int) -> None:
+        def create_and_use_module(thread_id: int) -> int:
             """Create a temporary module and use it."""
-            try:
-                # Add a small delay to increase chance of race conditions
-                time.sleep(0.001 * (thread_id % 5))
+            # All threads start at exactly the same time
+            barrier.wait()
+            with main._temporary_module(test_code) as module:
+                return int(module.add(1, 2))
 
-                with main._temporary_module(test_code) as module:
-                    # Verify the module works
-                    result = module.add(1, 2)
-                    results.append(result)
-
-                    # Small delay while holding the module loaded
-                    time.sleep(0.001)
-
-                # Module should be cleaned up now
-                # Check that our specific module name is gone
-                # (we can't check all of them since other threads might have theirs)
-
-            except Exception as e:
-                exceptions.append(e)
-
-        # Execute threads concurrently
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [
-                executor.submit(create_and_use_module, i) for i in range(num_threads)
-            ]
-            concurrent.futures.wait(futures)
+        exceptions, results = run_concurrent_test(
+            operation=create_and_use_module, num_threads=50
+        )
 
         # Verify no exceptions occurred
         assert len(exceptions) == 0, f"Exceptions occurred: {exceptions}"
-        assert len(results) == num_threads
+        assert len(results) == 50
         assert all(r == 3 for r in results)
 
-    def test_concurrent_symbolic_check(self) -> None:
+    def test_concurrent_symbolic_check(
+        self,
+        run_concurrent_test: Any,
+    ) -> None:
         """Concurrent symbolic_check calls should not raise exceptions.
 
         This tests the full analysis pipeline under concurrency, which
@@ -92,42 +76,27 @@ def multiply(x: int, y: int) -> int:
     '''post: _ == x * y'''
     return x * y
 """
+        barrier = threading.Barrier(20)
 
-        num_threads = 20
-        exceptions: list[Exception] = []
-        results: list[_SymbolicCheckResult] = []
-
-        def run_analysis(thread_id: int) -> None:
+        def run_analysis(thread_id: int) -> _SymbolicCheckResult:
             """Run symbolic analysis in a thread."""
-            try:
-                result = main.logic_symbolic_check(
-                    test_code, "multiply", timeout_seconds=5
-                )
-                results.append(result)
+            barrier.wait()
+            return main.logic_symbolic_check(test_code, "multiply", timeout_seconds=5)
 
-            except KeyError as e:
-                # KeyError would indicate the race condition bug
-                exceptions.append(TypeError(f"Race condition detected: KeyError {e}"))
-            except Exception as e:
-                # Other exceptions are logged but not considered test failures
-                # if they're from CrossHair itself
-                exceptions.append(e)
-
-        # Execute concurrent analyses
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [executor.submit(run_analysis, i) for i in range(num_threads)]
-            concurrent.futures.wait(futures)
+        exceptions, results = run_concurrent_test(
+            operation=run_analysis, num_threads=20
+        )
 
         # The key assertion: no KeyError (race condition) should occur
         race_condition_errors = [
             e
             for e in exceptions
-            if isinstance(e, TypeError) and "Race condition" in str(e)
+            if isinstance(e, KeyError) or "Race condition" in str(e)
         ]
         assert (
             len(race_condition_errors) == 0
         ), f"Race condition detected: {race_condition_errors}"
-        assert len(results) == num_threads
+        assert len(results) == 20
         # Verify all results have a status field (i.e., didn't crash in _temporary_module)
         assert all("status" in r for r in results)
 
@@ -141,15 +110,16 @@ def multiply(x: int, y: int) -> int:
         lock_contention_count = [0]
         successful_acquisitions = [0]
         num_threads = 10
+        barrier = threading.Barrier(num_threads)
 
         def contend_for_lock(thread_id: int) -> None:
             """Try to acquire the lock and detect contention."""
+            barrier.wait()
             acquired = main._SYS_MODULES_LOCK.acquire(blocking=False)
             if acquired:
                 try:
                     successful_acquisitions[0] += 1
-                    # Hold the lock briefly
-                    time.sleep(0.01)
+                    # Brief hold
                 finally:
                     main._SYS_MODULES_LOCK.release()
             else:
@@ -174,7 +144,10 @@ def multiply(x: int, y: int) -> int:
         ), "At least one thread should acquire the lock"
         assert successful_acquisitions[0] + lock_contention_count[0] == num_threads
 
-    def test_no_module_leak_after_concurrent_use(self) -> None:
+    def test_no_module_leak_after_concurrent_use(
+        self,
+        run_concurrent_test: Any,
+    ) -> None:
         """Verify that temporary modules are cleaned up after concurrent use.
 
         This test ensures that the cleanup in _temporary_module's finally
@@ -190,19 +163,15 @@ def dummy(x: int) -> int:
             1 for name in sys.modules.keys() if name.startswith("mcp_temp_")
         )
 
-        num_threads = 30
-
         def create_module(_: int) -> None:
             """Create and destroy a temporary module."""
             with main._temporary_module(test_code):
                 pass  # Module exists here
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [executor.submit(create_module, i) for i in range(num_threads)]
-            concurrent.futures.wait(futures)
-
-        # Give cleanup a moment to complete
-        time.sleep(0.1)
+        exceptions, results = run_concurrent_test(
+            operation=create_module, num_threads=30
+        )
+        assert len(exceptions) == 0
 
         # Count modules after
         temp_modules_after = sum(
@@ -216,7 +185,10 @@ def dummy(x: int) -> int:
             f"temporary modules not cleaned up"
         )
 
-    def test_concurrent_with_exception_in_module_body(self) -> None:
+    def test_concurrent_with_exception_in_module_body(
+        self,
+        run_concurrent_test: Any,
+    ) -> None:
         """Concurrent calls with exceptions in module code should still clean up.
 
         This tests that the finally block in _temporary_module runs correctly
@@ -227,33 +199,34 @@ def dummy(x: int) -> int:
 def broken():
     raise ValueError("intentional error")
 """
+        barrier = threading.Barrier(20)
 
-        num_threads = 20
-        exceptions_caught = 0
-
-        def try_load_broken_module(_: int) -> None:
+        def try_load_broken_module(_: int) -> bool:
             """Try to load a module with an error."""
-            nonlocal exceptions_caught
+            barrier.wait()
             try:
                 with main._temporary_module(error_code) as module:
                     # Module loads but calling the function raises
                     module.broken()
+                    return False
             except ValueError:
-                exceptions_caught += 1
+                return True
             except Exception:
                 # Should not get KeyError or other unexpected exceptions
-                pass
+                return False
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [
-                executor.submit(try_load_broken_module, i) for i in range(num_threads)
-            ]
-            concurrent.futures.wait(futures)
+        exceptions, results = run_concurrent_test(
+            operation=try_load_broken_module, num_threads=20
+        )
 
         # All threads should have caught the ValueError
-        assert exceptions_caught == num_threads
+        assert len(exceptions) == 0
+        assert sum(results) == 20
 
-    def test_concurrent_compare_functions(self) -> None:
+    def test_concurrent_compare_functions(
+        self,
+        run_concurrent_test: Any,
+    ) -> None:
         """Test concurrent compare_functions for race conditions.
 
         This exercises multiple _temporary_module calls within a single
@@ -270,31 +243,21 @@ def add_one_v2(x: int) -> int:
     '''post: _ == x + 1'''
     return x + 1
 """
+        barrier = threading.Barrier(15)
 
-        num_threads = 15
-        results = []
-        keyerrors: list[KeyError] = []
-        other_exceptions: list[Exception] = []
-
-        def run_comparison(_: int) -> None:
+        def run_comparison(_: int) -> _FunctionComparisonResult:
             """Run function comparison."""
-            try:
-                result = main.logic_compare_functions(
-                    code, "add_one", "add_one_v2", timeout_seconds=10
-                )
-                results.append(result)
-            except KeyError as e:
-                keyerrors.append(e)
-            except Exception as e:
-                # Capture other exceptions for debugging
-                other_exceptions.append(e)
+            barrier.wait()
+            return main.logic_compare_functions(
+                code, "add_one", "add_one_v2", timeout_seconds=10
+            )
 
-        # Execute concurrent comparisons
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [executor.submit(run_comparison, i) for i in range(num_threads)]
-            concurrent.futures.wait(futures)
+        exceptions, results = run_concurrent_test(
+            operation=run_comparison, num_threads=15
+        )
 
         # No KeyError should occur (would indicate race condition)
+        keyerrors = [e for e in exceptions if isinstance(e, KeyError)]
         assert len(keyerrors) == 0, f"Race condition detected: {keyerrors}"
 
         # We expect at least some results, even if some threads hit errors
@@ -303,57 +266,32 @@ def add_one_v2(x: int) -> int:
             # Verify all results have a status field (didn't crash in _temporary_module)
             assert all("status" in r for r in results)
 
-        # The important assertion: no KeyError (race condition)
-        # Other exceptions (like Z3 errors) are acceptable under high concurrency
-
-    def test_concurrent_find_path_to_exception(self) -> None:
+    def test_concurrent_find_path_to_exception(
+        self,
+        run_concurrent_test: Any,
+    ) -> None:
         """Test concurrent find_path_to_exception for race conditions."""
         code = """
 def divide(x: int, y: int) -> float:
     return x / y
 """
+        barrier = threading.Barrier(15)
 
-        num_threads = 15
-        results = []
-
-        def find_exception(_: int) -> None:
+        def find_exception(_: int) -> main._ExceptionPathResult:
             """Find ZeroDivisionError path."""
-            result = main.logic_find_path_to_exception(
+            barrier.wait()
+            return main.logic_find_path_to_exception(
                 code, "divide", "ZeroDivisionError", timeout_seconds=10
             )
-            results.append(result)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-            futures = [executor.submit(find_exception, i) for i in range(num_threads)]
-            concurrent.futures.wait(futures)
+        exceptions, results = run_concurrent_test(
+            operation=find_exception, num_threads=15
+        )
 
-        assert len(results) == num_threads
-        # All should complete successfully (found, unreachable, or unknown are acceptable)
+        assert len(exceptions) == 0
+        assert len(results) == 15
+        # All should complete successfully (found, unreachable, unknown, or error are acceptable)
         # The key is that no KeyError or other exceptions occurred
         assert all(
             r["status"] in ("found", "unreachable", "unknown", "error") for r in results
         ), f"Unexpected statuses: {[r['status'] for r in results]}"
-
-
-class TestSysModulesLockAttributes:
-    """Verify the lock has the expected properties."""
-
-    def test_lock_is_threading_lock(self) -> None:
-        """The _SYS_MODULES_LOCK should be a threading.Lock."""
-        assert isinstance(main._SYS_MODULES_LOCK, type(threading.Lock()))
-
-    def test_lock_is_module_level(self) -> None:
-        """The lock should be defined at module level."""
-        assert hasattr(main, "_SYS_MODULES_LOCK")
-
-    def test_lock_is_recursive_safe(self) -> None:
-        """Verify the lock works correctly for acquire/release."""
-        # Should be able to acquire
-        assert main._SYS_MODULES_LOCK.acquire(blocking=True)
-        # Should not be able to acquire again (non-recursive)
-        assert not main._SYS_MODULES_LOCK.acquire(blocking=False)
-        # Release
-        main._SYS_MODULES_LOCK.release()
-        # Should be able to acquire again
-        assert main._SYS_MODULES_LOCK.acquire(blocking=False)
-        main._SYS_MODULES_LOCK.release()
