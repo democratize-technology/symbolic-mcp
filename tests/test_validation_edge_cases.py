@@ -17,33 +17,31 @@ class TestImportEdgeCases:
     def test_relative_import_from_current_package(self) -> None:
         """Test that relative imports like 'from . import foo' are handled."""
         # This is valid Python and node.module could be None for relative imports
+        # Relative imports are allowed since they reference local package modules
         code = "from . import foo\ndef bar(): return foo"
         result = validate_code(code)
-        # Should either be valid (if we allow relative imports)
-        # or return a proper error, not crash
-        assert "valid" in result
-        assert isinstance(result["valid"], bool)
+        assert result["valid"] is True
 
     def test_relative_import_from_parent_package(self) -> None:
         """Test that relative imports like 'from .. import foo' are handled."""
+        # Relative imports are allowed since they reference local package modules
         code = "from .. import foo\ndef bar(): return foo"
         result = validate_code(code)
-        assert "valid" in result
-        assert isinstance(result["valid"], bool)
+        assert result["valid"] is True
 
     def test_relative_import_with_submodule(self) -> None:
         """Test 'from .submodule import something'."""
+        # Relative imports are allowed since they reference local package modules
         code = "from .utils import helper\ndef bar(): return helper()"
         result = validate_code(code)
-        assert "valid" in result
-        assert isinstance(result["valid"], bool)
+        assert result["valid"] is True
 
     def test_import_star(self) -> None:
         """Test 'from module import *' statement."""
+        # math is a safe module, so star import is valid
         code = "from math import *\ndef bar(): return sqrt(4)"
         result = validate_code(code)
-        assert "valid" in result
-        assert isinstance(result["valid"], bool)
+        assert result["valid"] is True
 
     def test_import_multiple_names(self) -> None:
         """Test importing multiple names from a module."""
@@ -87,48 +85,43 @@ class TestMalformedImportStatements:
         assert result["valid"] is True
 
 
+import pytest
+
+
 class TestBlockedModulesWithEdgeCases:
     """Test that blocked module detection works with various import styles."""
 
-    def test_blocked_module_via_from_import(self) -> None:
-        """Verify blocked modules caught in 'from X import Y'."""
-        code = "from os import path\ndef bar(): return path.exists('/tmp')"
+    @pytest.mark.parametrize(
+        "code,expected_error_module",
+        [
+            ("from os import path\ndef bar(): return path.exists('/tmp')", "os"),
+            ("import os\ndef bar(): pass", "os"),
+            ("import os.path\ndef bar(): pass", "os"),
+        ],
+        ids=["from_import", "bare_import", "dotted_name"],
+    )
+    def test_blocked_module_detection(
+        self, code: str, expected_error_module: str
+    ) -> None:
+        """Verify blocked modules are caught regardless of import style."""
         result = validate_code(code)
         assert result["valid"] is False
-        assert "os" in result["error"]
-
-    def test_blocked_module_via_import(self) -> None:
-        """Verify blocked modules caught in 'import X'."""
-        code = "import os\ndef bar(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "os" in result["error"]
-
-    def test_blocked_module_with_dotted_name(self) -> None:
-        """Verify blocked modules caught even with dotted paths."""
-        code = "import os.path\ndef bar(): pass"
-        result = validate_code(code)
-        assert result["valid"] is False
-        assert "os" in result["error"]
+        assert expected_error_module in result["error"]
 
 
 class TestSafeModulesWithEdgeCases:
     """Test that safe modules work with various import styles."""
 
-    def test_safe_module_via_from_import(self) -> None:
-        """Verify safe modules allowed in 'from X import Y'."""
-        code = "from math import sqrt\ndef bar(): return sqrt(4)"
-        result = validate_code(code)
-        assert result["valid"] is True
-
-    def test_safe_module_via_import(self) -> None:
-        """Verify safe modules allowed in 'import X'."""
-        code = "import math\ndef bar(): return math.sqrt(4)"
-        result = validate_code(code)
-        assert result["valid"] is True
-
-    def test_safe_module_with_dotted_name(self) -> None:
-        """Verify safe modules allowed with dotted paths."""
-        code = "import collections.abc\ndef bar(): pass"
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "from math import sqrt\ndef bar(): return sqrt(4)",
+            "import math\ndef bar(): return math.sqrt(4)",
+            "import collections.abc\ndef bar(): pass",
+        ],
+        ids=["from_import", "bare_import", "dotted_name"],
+    )
+    def test_safe_module_validation(self, code: str) -> None:
+        """Verify safe modules are allowed regardless of import style."""
         result = validate_code(code)
         assert result["valid"] is True

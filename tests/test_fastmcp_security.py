@@ -5,14 +5,20 @@ practices, particularly that error details are masked to prevent internal
 implementation details from leaking to clients.
 """
 
+import pytest
+
 from main import mcp
 
 
 class TestFastMCPSecurityConfiguration:
     """Tests verifying FastMCP server security configuration."""
 
-    def test_mask_error_details_enabled_on_tool_manager(self) -> None:
-        """Verify that mask_error_details is enabled on the FastMCP server.
+    @pytest.mark.parametrize(
+        "manager_attr",
+        ["_tool_manager", "_resource_manager", "_prompt_manager"],
+    )
+    def test_mask_error_details_enabled(self, manager_attr: str) -> None:
+        """Verify that mask_error_details is enabled on all managers.
 
         Without mask_error_details=True, unhandled exceptions expose full
         Python stack traces to MCP clients, leaking:
@@ -20,59 +26,19 @@ class TestFastMCPSecurityConfiguration:
         - Library versions
         - Implementation details
         - Potentially sensitive information
-
-        This test verifies the production security best practice is enabled.
-
-        Note: FastMCP stores mask_error_details on the _tool_manager,
-        _resource_manager, and _prompt_manager objects, not on the main instance.
-        """
-        # FastMCP stores mask_error_details on the tool manager
-        assert hasattr(
-            mcp, "_tool_manager"
-        ), "FastMCP instance should have _tool_manager attribute"
-
-        assert hasattr(
-            mcp._tool_manager, "mask_error_details"
-        ), "ToolManager should have mask_error_details attribute"
-
-        # Verify it's set to True for production security
-        assert (
-            mcp._tool_manager.mask_error_details is True
-        ), "mask_error_details should be True for production security"
-
-    def test_mask_error_details_enabled_on_resource_manager(self) -> None:
-        """Verify that mask_error_details is also enabled on the resource manager.
-
-        Resources also need error masking to prevent information leakage.
         """
         assert hasattr(
-            mcp, "_resource_manager"
-        ), "FastMCP instance should have _resource_manager attribute"
+            mcp, manager_attr
+        ), f"FastMCP instance should have {manager_attr} attribute"
 
+        manager = getattr(mcp, manager_attr)
         assert hasattr(
-            mcp._resource_manager, "mask_error_details"
-        ), "ResourceManager should have mask_error_details attribute"
+            manager, "mask_error_details"
+        ), f"{manager_attr} should have mask_error_details attribute"
 
         assert (
-            mcp._resource_manager.mask_error_details is True
-        ), "ResourceManager mask_error_details should be True"
-
-    def test_mask_error_details_enabled_on_prompt_manager(self) -> None:
-        """Verify that mask_error_details is also enabled on the prompt manager.
-
-        Prompts also need error masking to prevent information leakage.
-        """
-        assert hasattr(
-            mcp, "_prompt_manager"
-        ), "FastMCP instance should have _prompt_manager attribute"
-
-        assert hasattr(
-            mcp._prompt_manager, "mask_error_details"
-        ), "PromptManager should have mask_error_details attribute"
-
-        assert (
-            mcp._prompt_manager.mask_error_details is True
-        ), "PromptManager mask_error_details should be True"
+            manager.mask_error_details is True
+        ), f"{manager_attr} mask_error_details should be True for production security"
 
     def test_server_name_is_set(self) -> None:
         """Verify that the server has a proper name set.

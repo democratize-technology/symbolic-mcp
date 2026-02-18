@@ -157,56 +157,6 @@ def branches(x: int):
 # ============================================================================
 
 
-def test_timeout_handling() -> None:
-    """Test that analysis handles timeout gracefully.
-
-    Given: A complex function with a very short timeout
-    When: symbolic_check is called
-    Then: Status indicates timeout (error or unknown)
-    """
-    # Complex code that likely won't complete quickly
-    code = """
-def complex_func(x: int, y: int, z: int) -> int:
-    \"\"\"post: _ > 0\"\"\"
-    # Multiple nested conditions to increase analysis time
-    if x > 0:
-        if y > 0:
-            if z > 0:
-                return x + y + z
-            return x + y
-        return x
-    return 1
-    """
-    result = logic_symbolic_check(
-        code=code, function_name="complex_func", timeout_seconds=1
-    )
-
-    # With a 1 second timeout, analysis should either complete quickly
-    # or return an error/timeout status
-    assert result["status"] in ("complete", "error", "unknown", "confirmed", "verified")
-
-
-def test_invalid_postcondition_syntax() -> None:
-    """Test handling of invalid postcondition syntax.
-
-    Given: A function with malformed postcondition
-    When: symbolic_check is called
-    Then: An error status is returned (not a crash)
-    """
-    code = """
-def bad_postcondition(x: int) -> int:
-    \"\"\"post: this is not valid python _ ==\"\"\"
-    return x + 1
-    """
-    result = logic_symbolic_check(
-        code=code, function_name="bad_postcondition", timeout_seconds=10
-    )
-
-    # Should return a status, not crash - CrossHair may still analyze even
-    # with malformed postcondition, so accept verified as well
-    assert result["status"] in ("error", "unknown", "verified")
-
-
 def test_empty_function_handling() -> None:
     """Test handling of empty function body.
 

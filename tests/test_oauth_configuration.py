@@ -17,52 +17,41 @@ from main import _get_github_auth, mcp
 class TestOAuthConfiguration:
     """Tests verifying GitHub OAuth authentication configuration."""
 
-    def test_get_github_auth_returns_none_without_env_vars(
-        self, monkeypatch: MonkeyPatch
+    @pytest.mark.parametrize(
+        "client_id,client_secret,expected_result",
+        [
+            (None, None, None),
+            ("test_id", "test_secret", "GitHubProvider"),
+            ("test_id", None, None),
+            (None, "test_secret", None),
+        ],
+        ids=["no_env_vars", "both_set", "only_client_id", "only_secret"],
+    )
+    def test_get_github_auth_env_combinations(
+        self,
+        client_id: str | None,
+        client_secret: str | None,
+        expected_result: str | None,
+        monkeypatch: MonkeyPatch,
     ) -> None:
-        """Verify that _get_github_auth returns None when env vars not set."""
-        # Ensure env vars are not set
+        """Verify _get_github_auth behavior with various env var combinations."""
         monkeypatch.delenv("GITHUB_CLIENT_ID", raising=False)
         monkeypatch.delenv("GITHUB_CLIENT_SECRET", raising=False)
 
-        result = _get_github_auth()
-        assert result is None, "Should return None when env vars not set"
-
-    def test_get_github_auth_returns_provider_with_env_vars(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
-        """Verify that _get_github_auth returns GitHubProvider when env vars set."""
-        # Set env vars
-        monkeypatch.setenv("GITHUB_CLIENT_ID", "test_client_id")
-        monkeypatch.setenv("GITHUB_CLIENT_SECRET", "test_secret")
+        if client_id is not None:
+            monkeypatch.setenv("GITHUB_CLIENT_ID", client_id)
+        if client_secret is not None:
+            monkeypatch.setenv("GITHUB_CLIENT_SECRET", client_secret)
 
         result = _get_github_auth()
-        assert result is not None, "Should return provider when env vars set"
 
-        # Verify it's a GitHubProvider
-        from fastmcp.server.auth.providers.github import GitHubProvider
+        if expected_result is None:
+            assert result is None
+        else:
+            assert result is not None
+            from fastmcp.server.auth.providers.github import GitHubProvider
 
-        assert isinstance(result, GitHubProvider), "Should be GitHubProvider instance"
-
-    def test_get_github_auth_returns_none_with_only_client_id(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
-        """Verify that _get_github_auth returns None when only client_id set."""
-        monkeypatch.setenv("GITHUB_CLIENT_ID", "test_client_id")
-        monkeypatch.delenv("GITHUB_CLIENT_SECRET", raising=False)
-
-        result = _get_github_auth()
-        assert result is None, "Should return None when only client_id set"
-
-    def test_get_github_auth_returns_none_with_only_secret(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
-        """Verify that _get_github_auth returns None when only secret set."""
-        monkeypatch.delenv("GITHUB_CLIENT_ID", raising=False)
-        monkeypatch.setenv("GITHUB_CLIENT_SECRET", "test_secret")
-
-        result = _get_github_auth()
-        assert result is None, "Should return None when only secret set"
+            assert isinstance(result, GitHubProvider)
 
     def test_server_configured_for_oauth(self, monkeypatch: MonkeyPatch) -> None:
         """Verify that FastMCP server accepts auth parameter."""
