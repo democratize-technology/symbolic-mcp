@@ -57,12 +57,6 @@ dependencies = [
     # SMT solver backend
     "z3-solver>=4.12.0,<5.0.0",
 
-    # Design by contracts
-    "icontract>=2.6.0,<3.0.0",
-
-    # Security sandboxing
-    "RestrictedPython>=8.1,<9.0",
-
     # Type system extensions
     "typing-extensions>=4.0.0,<5.0.0",
 
@@ -175,7 +169,7 @@ profile = "black"
 multi_line_output = 3
 line_length = 88
 known_first_party = ["main"]
-known_third_party = ["fastmcp", "crosshair", "z3", "icontract", "RestrictedPython"]
+known_third_party = ["fastmcp", "crosshair", "z3", "pydantic", "psutil", "typing_extensions", "mcp"]
 
 [tool.mypy]
 python_version = "3.11"
