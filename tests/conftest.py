@@ -5,10 +5,13 @@ Shared pytest configuration and fixtures for all tests.
 import os
 import sys
 from collections.abc import Callable
-from typing import Any, Generator, Protocol
+from typing import Generator, Protocol, TypeVar
 
 import pytest
 from _pytest.config import Config
+
+# TypeVar for the result type of concurrent test operations
+T = TypeVar("T")
 
 
 # Type alias for the run_concurrent_test fixture return value
@@ -17,9 +20,9 @@ class ConcurrentTestFunc(Protocol):
 
     def __call__(
         self,
-        operation: Callable[[int], Any],
+        operation: Callable[[int], T],
         num_threads: int = 50,
-    ) -> tuple[list[Exception], list[Any]]: ...
+    ) -> tuple[list[Exception], list[T]]: ...
 
 
 # Test constants
@@ -107,11 +110,11 @@ def run_concurrent_test() -> ConcurrentTestFunc:
     from concurrent.futures import ThreadPoolExecutor, wait
 
     def _run(
-        operation: Callable[[int], Any],
+        operation: Callable[[int], T],
         num_threads: int = CONCURRENT_TEST_THREAD_COUNT,
-    ) -> tuple[list[Exception], list[Any]]:
+    ) -> tuple[list[Exception], list[T]]:
         exceptions: list[Exception] = []
-        results: list[Any] = []
+        results: list[T] = []
 
         def worker(thread_id: int) -> None:
             try:
