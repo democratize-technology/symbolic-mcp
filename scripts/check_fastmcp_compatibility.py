@@ -8,12 +8,33 @@ detailed compatibility reports and recommendations.
 
 import importlib.util
 import json
-import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 from typing_extensions import NotRequired, TypedDict
+
+# --- Type Definitions for Compatibility Results ---
+
+
+class _InstallationResult(TypedDict):
+    """Result of FastMCP installation check."""
+
+    installed: bool
+    version: str | None
+    location: str | None
+
+
+class _DependencyInfo(TypedDict):
+    """Information about a dependency."""
+
+    available: bool
+    version: str | None
+    location: str | None
+
+
+# API check results vary by category (core, decorators, server, context, error)
+# so we use dict[str, bool | str] instead of a fixed TypedDict
+_ApiCheckResult = dict[str, bool | str]
 
 
 class _CompatibilityResults(TypedDict):
@@ -23,10 +44,10 @@ class _CompatibilityResults(TypedDict):
     compatibility: str
     issues: list[str]
     recommendations: list[str]
-    api_compatibility: dict[str, Any]
-    dependency_compatibility: dict[str, Any]
-    test_results: dict[str, Any]
-    installation: NotRequired[dict[str, bool | str | None]]
+    api_compatibility: dict[str, _ApiCheckResult]
+    dependency_compatibility: dict[str, _DependencyInfo]
+    test_results: dict[str, bool | str]
+    installation: NotRequired[_InstallationResult]
     import_compatibility: NotRequired[dict[str, bool]]
 
 
@@ -44,7 +65,7 @@ class FastMCPCompatibilityChecker:
             "test_results": {},
         }
 
-    def check_fastmcp_installation(self) -> dict[str, bool | str | None]:
+    def check_fastmcp_installation(self) -> _InstallationResult:
         """Check FastMCP installation and version"""
         try:
             import fastmcp
@@ -83,9 +104,9 @@ class FastMCPCompatibilityChecker:
         except Exception as e:
             return "error", [f"Version comparison failed: {e}"]
 
-    def check_api_compatibility(self) -> dict[str, dict[str, bool | str]]:
+    def check_api_compatibility(self) -> dict[str, _ApiCheckResult]:
         """Check FastMCP API compatibility"""
-        api_checks: dict[str, dict[str, bool | str]] = {}
+        api_checks: dict[str, _ApiCheckResult] = {}
 
         try:
             import fastmcp
@@ -157,11 +178,9 @@ class FastMCPCompatibilityChecker:
 
         return import_results
 
-    def check_dependencies_compatibility(
-        self,
-    ) -> dict[str, dict[str, str | bool | None]]:
+    def check_dependencies_compatibility(self) -> dict[str, _DependencyInfo]:
         """Check FastMCP dependencies compatibility"""
-        dependency_checks = {}
+        dependency_checks: dict[str, _DependencyInfo] = {}
 
         # Check FastMCP dependencies
         dependencies_to_check = [
@@ -313,9 +332,20 @@ class FastMCPCompatibilityChecker:
 
         return recommendations
 
-    def run_full_compatibility_check(self) -> dict[str, Any]:
+    def run_full_compatibility_check(self) -> _CompatibilityResults:
         """Run comprehensive compatibility check"""
-        results: dict[str, Any] = dict(self.compatibility_results)
+        # Create a mutable copy of the base results
+        results: _CompatibilityResults = {
+            "version": self.compatibility_results["version"],
+            "compatibility": self.compatibility_results["compatibility"],
+            "issues": list(self.compatibility_results["issues"]),
+            "recommendations": list(self.compatibility_results["recommendations"]),
+            "api_compatibility": self.compatibility_results["api_compatibility"],
+            "dependency_compatibility": self.compatibility_results[
+                "dependency_compatibility"
+            ],
+            "test_results": self.compatibility_results["test_results"],
+        }
 
         # Check installation
         results["installation"] = self.check_fastmcp_installation()
@@ -339,13 +369,11 @@ class FastMCPCompatibilityChecker:
             results["test_results"] = self.run_compatibility_tests()
 
         # Generate recommendations
-        results["recommendations"] = self.generate_recommendations(
-            results  # type: ignore[arg-type]
-        )
+        results["recommendations"] = self.generate_recommendations(results)
 
         return results
 
-    def print_report(self, results: dict[str, Any]) -> None:
+    def print_report(self, results: _CompatibilityResults) -> None:
         """Print formatted compatibility report"""
         print("🔍 FastMCP 2.0 Compatibility Report")
         print("=" * 50)
