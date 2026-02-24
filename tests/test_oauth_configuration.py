@@ -9,7 +9,7 @@ import pytest
 from fastmcp import FastMCP
 from pytest import MonkeyPatch
 
-from main import _get_github_auth
+from symbolic_mcp import _get_github_auth
 
 
 class TestOAuthConfiguration:

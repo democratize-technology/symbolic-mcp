@@ -7,7 +7,7 @@ registered and accessible.
 from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
-from main import mcp
+from symbolic_mcp import mcp
 
 # --- Type-safe helpers for FastMCP internal access ---
 
@@ -57,7 +57,7 @@ class TestResources:
             "config://server",
             "info://capabilities",
         }
-        actual_resources = set(mcp._resource_manager._resources.keys())
+        actual_resources = set(mcp._resource_manager._resources.keys())  # type: ignore[attr-defined]
         assert (
             actual_resources == expected_resources
         ), f"Expected {expected_resources}, got {actual_resources}"
@@ -150,7 +150,7 @@ class TestPrompts:
             "compare_functions_template",
             "analyze_branches_template",
         }
-        actual_prompts = set(mcp._prompt_manager._prompts.keys())
+        actual_prompts = set(mcp._prompt_manager._prompts.keys())  # type: ignore[attr-defined]
         assert (
             actual_prompts == expected_prompts
         ), f"Expected {expected_prompts}, got {actual_prompts}"
@@ -162,7 +162,7 @@ class TestPrompts:
         When: Each prompt function is called
         Then: It returns a string
         """
-        for name in mcp._prompt_manager._prompts.keys():
+        for name in mcp._prompt_manager._prompts.keys():  # type: ignore[attr-defined]
             prompt_fn = _get_mcp_prompt_fn(mcp, name)
             result = prompt_fn()
             assert isinstance(result, str), f"Prompt {name} should return str"

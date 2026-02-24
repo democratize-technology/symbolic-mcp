@@ -19,7 +19,7 @@ same elif nodes as separate If nodes, causing double-counting.
 
 import pytest
 
-from main import logic_analyze_branches as analyze_branches
+from symbolic_mcp import logic_analyze_branches as analyze_branches
 
 # Test cases for cyclomatic complexity
 # Format: (code, function_name, expected_complexity, description)

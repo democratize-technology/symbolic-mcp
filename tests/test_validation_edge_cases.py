@@ -10,7 +10,7 @@ and BLOCKED_MODULES constant have no CrossHair dependencies.
 
 import pytest
 
-from main import validate_code
+from symbolic_mcp import validate_code
 
 
 class TestImportEdgeCases:

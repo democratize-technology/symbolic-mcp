@@ -8,7 +8,7 @@ use UUIDs to guarantee uniqueness, as implemented in `main._temporary_module`.
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from main import _temporary_module
+from symbolic_mcp import _temporary_module
 
 
 class TestModuleNameUniqueness:

@@ -7,7 +7,7 @@ implementation details from leaking to clients.
 
 import pytest
 
-from main import mcp
+from symbolic_mcp import mcp
 
 
 class TestFastMCPSecurityConfiguration:
@@ -70,7 +70,7 @@ class TestFastMCPSecurityConfiguration:
         """
         # FastMCP uses the tool_manager._tools dict to store tools
         # Keys are tool names, values are Tool objects
-        tool_names = set(mcp._tool_manager._tools.keys())
+        tool_names = set(mcp._tool_manager._tools.keys())  # type: ignore[attr-defined]
 
         expected_tools = {
             "symbolic_check",

@@ -14,7 +14,11 @@ from contextlib import contextmanager
 from typing import Any, Generator
 from unittest.mock import patch
 
-from main import SymbolicAnalyzer, logic_compare_functions, logic_find_path_to_exception
+from symbolic_mcp import (
+    SymbolicAnalyzer,
+    logic_compare_functions,
+    logic_find_path_to_exception,
+)
 
 
 @contextmanager

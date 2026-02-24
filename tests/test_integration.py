@@ -6,7 +6,7 @@ analysis pipeline with real CrossHair symbolic execution.
 
 import pytest
 
-from main import (
+from symbolic_mcp import (
     logic_analyze_branches,
     logic_compare_functions,
     logic_find_path_to_exception,

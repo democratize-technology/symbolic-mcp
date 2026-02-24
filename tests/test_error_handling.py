@@ -8,10 +8,14 @@ from typing import Callable, Union
 
 import pytest
 
-from main import _ExceptionPathResult, _FunctionComparisonResult, _SymbolicCheckResult
-from main import logic_compare_functions as compare_functions
-from main import logic_find_path_to_exception as find_path_to_exception
-from main import logic_symbolic_check as symbolic_check
+from symbolic_mcp import (
+    _ExceptionPathResult,
+    _FunctionComparisonResult,
+    _SymbolicCheckResult,
+)
+from symbolic_mcp import logic_compare_functions as compare_functions
+from symbolic_mcp import logic_find_path_to_exception as find_path_to_exception
+from symbolic_mcp import logic_symbolic_check as symbolic_check
 
 # Type alias for the test functions
 _TestFunc = Callable[

@@ -12,8 +12,8 @@ import sys
 import threading
 
 # Import the module under test
-import main
-from main import _FunctionComparisonResult, _SymbolicCheckResult
+import symbolic_mcp
+from symbolic_mcp import _FunctionComparisonResult, _SymbolicCheckResult
 from tests.types import ConcurrentTestFunc
 
 
@@ -43,7 +43,7 @@ def add(a: int, b: int) -> int:
             """Create a temporary module and use it."""
             # All threads start at exactly the same time
             barrier.wait()
-            with main._temporary_module(test_code) as module:
+            with symbolic_mcp._temporary_module(test_code) as module:
                 return int(module.add(1, 2))
 
         exceptions, results = run_concurrent_test(
@@ -79,7 +79,9 @@ def multiply(x: int, y: int) -> int:
         def run_analysis(thread_id: int) -> _SymbolicCheckResult:
             """Run symbolic analysis in a thread."""
             barrier.wait()
-            return main.logic_symbolic_check(test_code, "multiply", timeout_seconds=5)
+            return symbolic_mcp.logic_symbolic_check(
+                test_code, "multiply", timeout_seconds=5
+            )
 
         exceptions, results = run_concurrent_test(
             operation=run_analysis, num_threads=20
@@ -113,13 +115,13 @@ def multiply(x: int, y: int) -> int:
         def contend_for_lock(thread_id: int) -> None:
             """Try to acquire the lock and detect contention."""
             barrier.wait()
-            acquired = main._SYS_MODULES_LOCK.acquire(blocking=False)
+            acquired = symbolic_mcp._SYS_MODULES_LOCK.acquire(blocking=False)
             if acquired:
                 try:
                     successful_acquisitions[0] += 1
                     # Brief hold
                 finally:
-                    main._SYS_MODULES_LOCK.release()
+                    symbolic_mcp._SYS_MODULES_LOCK.release()
             else:
                 # Failed to acquire immediately means another thread has it
                 lock_contention_count[0] += 1
@@ -163,7 +165,7 @@ def dummy(x: int) -> int:
 
         def create_module(_: int) -> None:
             """Create and destroy a temporary module."""
-            with main._temporary_module(test_code):
+            with symbolic_mcp._temporary_module(test_code):
                 pass  # Module exists here
 
         exceptions, results = run_concurrent_test(
@@ -203,7 +205,7 @@ def broken():
             """Try to load a module with an error."""
             barrier.wait()
             try:
-                with main._temporary_module(error_code) as module:
+                with symbolic_mcp._temporary_module(error_code) as module:
                     # Module loads but calling the function raises
                     module.broken()
                     return False
@@ -246,7 +248,7 @@ def add_one_v2(x: int) -> int:
         def run_comparison(_: int) -> _FunctionComparisonResult:
             """Run function comparison."""
             barrier.wait()
-            return main.logic_compare_functions(
+            return symbolic_mcp.logic_compare_functions(
                 code, "add_one", "add_one_v2", timeout_seconds=10
             )
 
@@ -275,10 +277,10 @@ def divide(x: int, y: int) -> float:
 """
         barrier = threading.Barrier(15)
 
-        def find_exception(_: int) -> main._ExceptionPathResult:
+        def find_exception(_: int) -> symbolic_mcp._ExceptionPathResult:
             """Find ZeroDivisionError path."""
             barrier.wait()
-            return main.logic_find_path_to_exception(
+            return symbolic_mcp.logic_find_path_to_exception(
                 code, "divide", "ZeroDivisionError", timeout_seconds=10
             )
 

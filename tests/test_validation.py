@@ -15,7 +15,12 @@ and the ALLOWED_MODULES/BLOCKED_MODULES constants have no CrossHair dependencies
 
 import pytest
 
-from main import ALLOWED_MODULES, BLOCKED_MODULES, DANGEROUS_BUILTINS, validate_code
+from symbolic_mcp import (
+    ALLOWED_MODULES,
+    BLOCKED_MODULES,
+    DANGEROUS_BUILTINS,
+    validate_code,
+)
 
 pytestmark = pytest.mark.mocked
 
